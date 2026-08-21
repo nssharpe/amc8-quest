@@ -29,8 +29,12 @@ timer. Solving earns XP, levels, an evolving pet, and trophies.
 
 ## Game rules
 
-- One problem per day by default (change it under "grown-up settings" on the
-  kid-select screen — gear icon at the bottom).
+- The daily goal is one problem by default (change it under "grown-up
+  settings"), but problems are never capped — once the goal is hit, extras
+  are framed as bonus rounds.
+- Some individual problem wiki pages omit the answer choices; the app detects
+  this and falls back to extracting the problem from the year's combined
+  problems page, which includes them.
 - Picking a number serves a random not-yet-attempted year for that number;
   once every year has been attempted, missed problems come back for retry.
   A number is disabled once all 41 of its problems are solved.

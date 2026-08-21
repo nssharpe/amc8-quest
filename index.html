@@ -406,18 +406,13 @@
 
     <div class="card mission" id="mission-card">
       <div id="mission-open">
-        <h2>🎯 Today's Mission</h2>
+        <h2 id="mission-title">🎯 Today's Mission</h2>
         <div class="sub" id="mission-sub"></div>
         <div class="numgrid" id="numgrid"></div>
         <div class="mission-go">
           <button class="btn gold big" id="btn-start" disabled>START ⚡</button>
           <span id="pick-hint" style="color:var(--text-dim);font-weight:700">pick a problem number first!</span>
         </div>
-      </div>
-      <div id="mission-done" class="donebox" style="display:none">
-        <div class="moon">🌙✨</div>
-        <h2 style="color:var(--mint)">All done for today!</h2>
-        <p id="done-msg">Great work — come back tomorrow for a new problem.</p>
       </div>
       <div id="mission-resume" class="donebox" style="display:none">
         <div class="moon">⏳</div>
@@ -529,7 +524,7 @@
     <div class="bigemoji">⚙️</div>
     <h2>Grown-up settings</h2>
     <div class="set-row">
-      <label for="set-daily">Problems per day</label>
+      <label for="set-daily">Daily goal (min. problems)</label>
       <input type="number" id="set-daily" min="1" max="20" step="1">
     </div>
     <div class="danger-zone">
@@ -602,6 +597,7 @@ const LETTERS = ["A", "B", "C", "D", "E"];
 
 const contestName = y => (y <= 1998 ? y + " AJHSME" : y + " AMC 8");
 const wikiPage = (y, n) => y + "_" + (y <= 1998 ? "AJHSME" : "AMC_8") + "_Problems/Problem_" + n;
+const wikiYearPage = y => y + "_" + (y <= 1998 ? "AJHSME" : "AMC_8") + "_Problems";
 const wikiUrl = (y, n) => "https://artofproblemsolving.com/wiki/index.php/" + wikiPage(y, n);
 const answerOf = (y, n) => ANSWERS[y][n - 1];
 
@@ -1041,26 +1037,24 @@ function renderDash() {
 }
 
 function renderMission(p) {
-  const daily = foldSettings().daily;
+  const goal = foldSettings().daily;
   const used = attemptsToday(p);
-  const left = daily - used;
   $("mission-open").style.display = "none";
-  $("mission-done").style.display = "none";
   $("mission-resume").style.display = "none";
 
   if (getActive(currentKid)) { $("mission-resume").style.display = "block"; return; }
-  if (left <= 0) {
-    $("mission-done").style.display = "block";
-    $("done-msg").textContent = used > 1
-      ? `You did ${used} problems today. Legendary. See you tomorrow!`
-      : "Great work — come back tomorrow for a new problem.";
-    return;
-  }
 
   $("mission-open").style.display = "block";
-  $("mission-sub").textContent =
-    (daily > 1 ? `${left} of ${daily} problems left today · ` : "") +
-    "pick your problem number — higher numbers are harder & worth more XP";
+  if (used >= goal) {
+    $("mission-title").textContent = "🌟 Mission complete!";
+    $("mission-sub").textContent =
+      `You hit your daily goal${used > goal ? ` (${used} problems!)` : ""} — bonus problems are pure extra XP 🎁`;
+  } else {
+    $("mission-title").textContent = "🎯 Today's Mission";
+    $("mission-sub").textContent =
+      (goal > 1 ? `${goal - used} of ${goal} to go today · ` : "") +
+      "pick your problem number — higher numbers are harder & worth more XP";
+  }
   pickedNum = null;
   $("btn-start").disabled = true;
   $("pick-hint").style.display = "";
@@ -1198,29 +1192,52 @@ function sanitizeProblemNodes(container) {
   });
 }
 
+async function fetchWikiDoc(page) {
+  const url = "https://artofproblemsolving.com/wiki/api.php?action=parse&page=" + page + "&format=json&origin=*";
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  const j = await res.json();
+  if (!j.parse) throw new Error("no parse");
+  return new DOMParser().parseFromString(j.parse.text["*"], "text/html");
+}
+
+// choices show up either as plain text "(A)" or inside a LaTeX image's alt text
+function hasChoices(frag) {
+  let s = frag.textContent;
+  frag.querySelectorAll("img").forEach(i => { s += " " + (i.getAttribute("alt") || ""); });
+  return /\(\s*A\s*\)/.test(s);
+}
+
+function extractSection(doc, headingRe) {
+  const h2 = [...doc.querySelectorAll("h2")].find(h => headingRe.test(h.textContent.replace(/\[edit\]/g, "").trim()));
+  const frag = document.createElement("div");
+  if (h2) {
+    let node = h2.nextElementSibling;
+    while (node && node.tagName !== "H2") { frag.appendChild(node.cloneNode(true)); node = node.nextElementSibling; }
+  } else {
+    const root = doc.querySelector(".mw-parser-output") || doc.body;
+    for (const child of [...root.children]) {
+      if (/^H[12]$/.test(child.tagName) && /Solution/i.test(child.textContent)) break;
+      if (child.id === "toc" || child.classList.contains("toc")) continue;
+      frag.appendChild(child.cloneNode(true));
+    }
+  }
+  // drop bare "Solution" link paragraphs (present on the combined year pages)
+  [...frag.children].forEach(el => { if (/^Solutions?$/.test(el.textContent.trim())) el.remove(); });
+  return frag;
+}
+
 async function loadProblemBody(y, n, attempt = 0) {
   const body = $("p-body");
   body.innerHTML = `<div class="loading"><span class="spin"></span>Summoning your problem…</div>`;
   try {
-    const url = "https://artofproblemsolving.com/wiki/api.php?action=parse&page=" + wikiPage(y, n) + "&format=json&origin=*";
-    const res = await fetch(url);
-    if (!res.ok) throw new Error("HTTP " + res.status);
-    const j = await res.json();
-    if (!j.parse) throw new Error("no parse");
-    const doc = new DOMParser().parseFromString(j.parse.text["*"], "text/html");
-    const h2s = [...doc.querySelectorAll("h2")];
-    const probH2 = h2s.find(h => /^Problem/.test(h.textContent.trim()));
-    const frag = document.createElement("div");
-    if (probH2) {
-      let node = probH2.nextElementSibling;
-      while (node && node.tagName !== "H2") { frag.appendChild(node.cloneNode(true)); node = node.nextElementSibling; }
-    } else {
-      const root = doc.querySelector(".mw-parser-output") || doc.body;
-      for (const child of [...root.children]) {
-        if (/^H[12]$/.test(child.tagName) && /Solution/i.test(child.textContent)) break;
-        if (child.id === "toc" || child.classList.contains("toc")) continue;
-        frag.appendChild(child.cloneNode(true));
-      }
+    let frag = extractSection(await fetchWikiDoc(wikiPage(y, n)), /^Problem/);
+    if (!hasChoices(frag)) {
+      // some individual problem pages omit the answer choices — the combined year page has them
+      try {
+        const yearFrag = extractSection(await fetchWikiDoc(wikiYearPage(y)), new RegExp("^Problem " + n + "$"));
+        if (hasChoices(yearFrag)) frag = yearFrag;
+      } catch {}
     }
     sanitizeProblemNodes(frag);
     if (!frag.textContent.trim() && !frag.querySelector("img")) throw new Error("empty problem");
