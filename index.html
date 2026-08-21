@@ -128,6 +128,15 @@
   .kid-card .klvl { color: var(--text-dim); font-weight: 700; margin-top: .2rem; }
   .parent-row { margin-top: 3.2rem; }
 
+  .syncchip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    margin-top: 1.2rem;
+    font-size: .78rem; font-weight: 800; color: var(--text-dim);
+    background: var(--card); border: 2px solid var(--line);
+    border-radius: 999px; padding: .2rem .8rem;
+  }
+  .syncchip.err { color: var(--gold); border-color: var(--gold); }
+
   /* ================= DASHBOARD ================= */
   .dash-head {
     display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
@@ -303,7 +312,6 @@
   }
   @keyframes xppulse { from { transform: scale(1); } to { transform: scale(1.06); } }
   .modal .btnrow { display: flex; gap: .8rem; justify-content: center; margin-top: 1.4rem; flex-wrap: wrap; }
-  .modal .subrow { margin-top: .9rem; }
 
   /* pet picker */
   .petpick { display: grid; grid-template-columns: repeat(2, 1fr); gap: .8rem; margin-top: 1.2rem; }
@@ -319,7 +327,7 @@
   .petopt .pl { font-family: "Fredoka", sans-serif; font-weight: 600; margin-top: .2rem; }
   .petopt .pd { font-size: .72rem; color: var(--text-dim); font-weight: 700; }
 
-  /* settings */
+  /* settings + password */
   .set-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: .9rem 0; text-align: left; }
   .set-row label { font-weight: 800; }
   .set-row input[type=number] {
@@ -327,6 +335,16 @@
     background: var(--night-deep); color: var(--text);
     border: 2px solid var(--line); border-radius: 10px; padding: .35rem .3rem;
   }
+  .pw-input {
+    width: 100%; font: inherit; font-weight: 800; text-align: center; letter-spacing: .1em;
+    background: var(--night-deep); color: var(--text);
+    border: 2px solid var(--line); border-radius: 12px; padding: .6rem .8rem;
+    margin-top: 1rem;
+  }
+  .pw-input:focus { outline: 2px solid var(--gold); }
+  .pw-err { color: var(--coral); font-weight: 800; font-size: .9rem; margin-top: .5rem; min-height: 1.3em; }
+  .modal.shake { animation: shake .4s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
   .danger-zone { border-top: 2px dashed var(--line); margin-top: 1.2rem; padding-top: 1rem; }
   .danger-zone p { font-size: .85rem; color: var(--text-dim); font-weight: 700; margin-bottom: .6rem; }
 
@@ -364,6 +382,7 @@
     <div class="logo">AMC 8 QUEST</div>
     <p class="tagline">One problem a day. XP for your brain. 🚀</p>
     <div class="kid-cards" id="kid-cards"></div>
+    <div><span class="syncchip" id="syncchip">☁️ syncing…</span></div>
     <div class="parent-row">
       <button class="btn ghost" id="btn-settings">⚙️ grown-up settings</button>
     </div>
@@ -489,6 +508,21 @@
   </div>
 </div>
 
+<!-- ============ PARENT PASSWORD ============ -->
+<div class="overlay" id="ov-password">
+  <div class="modal" id="pw-modal">
+    <div class="bigemoji">🔒</div>
+    <h2>Grown-ups only!</h2>
+    <div class="detail">Enter the parent password to open settings.</div>
+    <input type="password" class="pw-input" id="pw-input" autocomplete="off" placeholder="password">
+    <div class="pw-err" id="pw-err"></div>
+    <div class="btnrow">
+      <button class="btn" id="pw-cancel">Never mind</button>
+      <button class="btn gold" id="pw-ok">Unlock</button>
+    </div>
+  </div>
+</div>
+
 <!-- ============ SETTINGS MODAL ============ -->
 <div class="overlay" id="ov-settings">
   <div class="modal">
@@ -499,7 +533,7 @@
       <input type="number" id="set-daily" min="1" max="20" step="1">
     </div>
     <div class="danger-zone">
-      <p>Danger zone — erases all progress, XP, and trophies for that kid. Cannot be undone.</p>
+      <p>Danger zone — erases all progress, XP, and trophies for that kid, on every device. Cannot be undone.</p>
       <div class="btnrow" style="margin-top:0">
         <button class="btn coral" data-reset="zyler">Reset Zyler</button>
         <button class="btn coral" data-reset="kadyn">Reset Kadyn</button>
@@ -514,7 +548,7 @@
 <script>
 "use strict";
 
-/* ==================== DATA ==================== */
+/* ==================== CONTEST DATA ==================== */
 const ANSWERS = {
   1985: "ABDCCDCAACEBBBCDDEBCEBEDA",
   1986: "AACCDEBEEBADCCBAEBDDECBBD",
@@ -568,6 +602,14 @@ const wikiPage = (y, n) => y + "_" + (y <= 1998 ? "AJHSME" : "AMC_8") + "_Proble
 const wikiUrl = (y, n) => "https://artofproblemsolving.com/wiki/index.php/" + wikiPage(y, n);
 const answerOf = (y, n) => ANSWERS[y][n - 1];
 
+/* ==================== SYNC BACKEND (Google Form -> Sheet) ==================== */
+const SYNC = {
+  form: "https://docs.google.com/forms/d/e/1FAIpQLScrsCAr6YMxEDVkj-N7FkJA0_dXDmcdLh6s0uJep7vRbEJ8Zw/formResponse",
+  fields: { kid: "entry.1914113508", type: "entry.695207644", info: "entry.395573110" },
+  sheet: "1psoHNlkBsdd8Z2QMehLn-iaPsFBmzduSubO3i1BjNo0",
+};
+const PARENT_HASH = "6e6c2eb3bb3873336ba8c35c40ccf9ac8d380ab409934eaeb86811d9c942acfd";
+
 /* ==================== GAME CONFIG ==================== */
 const LEVEL_TITLES = [
   "Math Egg", "Number Rookie", "Digit Explorer", "Pattern Scout", "Fraction Fighter",
@@ -576,74 +618,237 @@ const LEVEL_TITLES = [
   "Theorem Tamer", "Math Master", "Grand Solver", "Olympiad Hero", "Math Legend",
   "Cosmic Calculator", "Infinity Champion", "AMC Grandmaster",
 ];
-const xpCost = lvl => 80 + 40 * (lvl - 1);            // XP to go from lvl -> lvl+1
+const xpCost = lvl => 80 + 40 * (lvl - 1);
 function levelFromXp(xp) {
   let lvl = 1, spent = 0;
   while (xp - spent >= xpCost(lvl)) { spent += xpCost(lvl); lvl++; }
   return { lvl, into: xp - spent, need: xpCost(lvl) };
 }
-const xpCorrect = n => 20 + 4 * n;
 const speedParSec = n => 30 + 6 * n;
 const SPEED_BONUS = 15, XP_TRY = 5;
+const xpFor = r => (r.ok ? 20 + 4 * r.n + (r.t < speedParSec(r.n) ? SPEED_BONUS : 0) : XP_TRY);
 
 const PETS = {
-  dragon:  { label: "Dragon",  desc: "fire & fury",   stages: ["🥚", "🐣", "🦎", "🐲", "🐉", "🐉✨"] },
-  unicorn: { label: "Unicorn", desc: "sparkle power", stages: ["🥚", "🐣", "🐴", "🦄", "🦄✨", "🌈🦄"] },
-  robot:   { label: "Robot",   desc: "beep boop",     stages: ["📦", "🔩", "🤖", "🤖⚡", "🤖🚀", "🤖🌟"] },
+  dragon:  { label: "Dragon",  desc: "fire & fury",    stages: ["🥚", "🐣", "🦎", "🐲", "🐉", "🐉✨"] },
+  unicorn: { label: "Unicorn", desc: "sparkle power",  stages: ["🥚", "🐣", "🐴", "🦄", "🦄✨", "🌈🦄"] },
+  robot:   { label: "Robot",   desc: "beep boop",      stages: ["📦", "🔩", "🤖", "🤖⚡", "🤖🚀", "🤖🌟"] },
   cat:     { label: "Cat",     desc: "sneaky & smart", stages: ["🥚", "🐣", "🐱", "😼", "🐯", "🦁👑"] },
 };
 const STAGE_LEVELS = [1, 3, 6, 10, 15, 21];
 const STAGE_NAMES = ["Egg", "Hatchling", "Youngster", "Champion", "Mega", "LEGENDARY"];
 function petStage(lvl) { let s = 0; for (let i = 0; i < STAGE_LEVELS.length; i++) if (lvl >= STAGE_LEVELS[i]) s = i; return s; }
-function petEmoji(p) { return p.pet ? PETS[p.pet].stages[petStage(levelFromXp(p.xp).lvl)] : "🥚"; }
 
 const BADGES = [
-  { id: "first",    e: "🌟", n: "First Star",     d: "Solve your first problem" },
-  { id: "ten",      e: "🔟", n: "Perfect Ten",    d: "Solve 10 problems" },
-  { id: "fifty",    e: "⚡", n: "Fifty Frenzy",   d: "Solve 50 problems" },
-  { id: "hundred",  e: "💯", n: "Century Club",   d: "Solve 100 problems" },
+  { id: "first",    e: "🌟", n: "First Star",      d: "Solve your first problem" },
+  { id: "ten",      e: "🔟", n: "Perfect Ten",     d: "Solve 10 problems" },
+  { id: "fifty",    e: "⚡", n: "Fifty Frenzy",    d: "Solve 50 problems" },
+  { id: "hundred",  e: "💯", n: "Century Club",    d: "Solve 100 problems" },
   { id: "big250",   e: "🏆", n: "Problem Crusher", d: "Solve 250 problems" },
-  { id: "streak3",  e: "🔥", n: "On Fire",        d: "Practice 3 days in a row" },
-  { id: "streak7",  e: "📅", n: "Week Warrior",   d: "Practice 7 days in a row" },
-  { id: "streak30", e: "🌈", n: "Monthly Legend", d: "Practice 30 days in a row" },
-  { id: "rocket",   e: "🚀", n: "Rocket Brain",   d: "Solve correctly in under 60s" },
-  { id: "deep",     e: "🦈", n: "Deep End",       d: "Solve a problem numbered 20+" },
-  { id: "summit",   e: "🏔️", n: "The Summit",     d: "Solve a #25 — the final boss" },
-  { id: "comeback", e: "💪", n: "Comeback Kid",   d: "Solve one you missed before" },
-  { id: "sharp5",   e: "🎯", n: "Sharpshooter",   d: "5 correct in a row" },
-  { id: "sharp10",  e: "🧠", n: "Unstoppable",    d: "10 correct in a row" },
-  { id: "retro",    e: "🕰️", n: "Time Traveler",  d: "Solve a problem from before 1999" },
+  { id: "streak3",  e: "🔥", n: "On Fire",         d: "Practice 3 days in a row" },
+  { id: "streak7",  e: "📅", n: "Week Warrior",    d: "Practice 7 days in a row" },
+  { id: "streak30", e: "🌈", n: "Monthly Legend",  d: "Practice 30 days in a row" },
+  { id: "rocket",   e: "🚀", n: "Rocket Brain",    d: "Solve correctly in under 60s" },
+  { id: "deep",     e: "🦈", n: "Deep End",        d: "Solve a problem numbered 20+" },
+  { id: "summit",   e: "🏔️", n: "The Summit",      d: "Solve a #25 — the final boss" },
+  { id: "comeback", e: "💪", n: "Comeback Kid",    d: "Solve one you missed before" },
+  { id: "sharp5",   e: "🎯", n: "Sharpshooter",    d: "5 correct in a row" },
+  { id: "sharp10",  e: "🧠", n: "Unstoppable",     d: "10 correct in a row" },
+  { id: "retro",    e: "🕰️", n: "Time Traveler",   d: "Solve a problem from before 1999" },
 ];
 
-/* ==================== STORAGE ==================== */
+/* ==================== LOCAL STORAGE ==================== */
 const store = {
   get(k, fb) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
   del(k) { try { localStorage.removeItem(k); } catch {} },
 };
-const freshProfile = () => ({ pet: null, xp: 0, records: [], badges: {}, active: null });
-// record: {y, n, a, ok, t, d, xp}   active: {y, n, start, d}
-const pKey = id => "amc8q." + id;
-const loadProfile = id => Object.assign(freshProfile(), store.get(pKey(id), {}));
-const saveProfile = (id, p) => store.set(pKey(id), p);
-const settings = Object.assign({ daily: 1, sound: true }, store.get("amc8q.settings", {}));
-const saveSettings = () => store.set("amc8q.settings", settings);
-
 function todayStr() {
   const d = new Date();
   return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
 }
+const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(36).slice(2));
 
-/* ==================== DERIVED STATS ==================== */
-function solvedSet(p) { const s = new Set(); for (const r of p.records) if (r.ok) s.add(r.y + "-" + r.n); return s; }
+/* ==================== EVENT LOG + SYNC ==================== */
+// event: { kid: 'zyler'|'kadyn'|'*', type: 'answer'|'pet'|'reset'|'daily', info: {id, ...} }
+let serverEvents = store.get("amc8q.cache", []);
+let outbox = store.get("amc8q.outbox", []);
+let syncState = "pending"; // 'ok' | 'fail' | 'pending'
+let gvizSeq = 0;
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+function validEvent(ev) {
+  if (!ev || typeof ev !== "object" || !ev.info || typeof ev.info !== "object") return false;
+  if (typeof ev.info.id !== "string" || !ev.info.id || ev.info.id.length > 64) return false;
+  if (!(ev.kid in KIDS) && ev.kid !== "*") return false;
+  const i = ev.info;
+  switch (ev.type) {
+    case "answer":
+      return ANSWERS[i.y] !== undefined && Number.isInteger(i.n) && i.n >= 1 && i.n <= 25 &&
+        (i.a === null || LETTERS.includes(i.a)) && typeof i.ok === "boolean" &&
+        typeof i.t === "number" && i.t >= 0 && i.t < 86400 && typeof i.d === "string" && DATE_RE.test(i.d);
+    case "pet": return i.pet in PETS;
+    case "reset": return true;
+    case "daily": return Number.isInteger(i.daily) && i.daily >= 1 && i.daily <= 20;
+    default: return false;
+  }
+}
+
+function allEvents() {
+  const seen = new Set();
+  const out = [];
+  for (const ev of serverEvents.concat(outbox)) {
+    if (!validEvent(ev) || seen.has(ev.info.id)) continue;
+    seen.add(ev.info.id);
+    out.push(ev);
+  }
+  return out;
+}
+
+function postEvent(ev) {
+  const body = new URLSearchParams();
+  body.set(SYNC.fields.kid, ev.kid);
+  body.set(SYNC.fields.type, ev.type);
+  body.set(SYNC.fields.info, JSON.stringify(ev.info));
+  ev.sent = true; // optimistic — flipped back on network failure so the retry loop resends
+  store.set("amc8q.outbox", outbox);
+  return fetch(SYNC.form, { method: "POST", mode: "no-cors", body })
+    .catch(() => { ev.sent = false; store.set("amc8q.outbox", outbox); });
+}
+
+function sendEvent(kid, type, info) {
+  const ev = { kid, type, info: Object.assign({ id: uuid() }, info), sent: false };
+  outbox.push(ev);
+  store.set("amc8q.outbox", outbox);
+  postEvent(ev);
+  return ev;
+}
+
+function syncNow() {
+  return new Promise(resolve => {
+    const cb = "__amc8gv" + (++gvizSeq);
+    let done = false;
+    const finish = ok => { if (!done) { done = true; delete window[cb]; script.remove(); resolve(ok); } };
+    window[cb] = resp => {
+      try {
+        const rows = (resp.table.rows || []).map(r => (r.c || []).map(c => (c ? c.v : null)));
+        const evs = [];
+        for (const row of rows) {
+          try {
+            const info = JSON.parse(row[3]);
+            const ev = { kid: row[1], type: row[2], info };
+            if (validEvent(ev)) evs.push(ev);
+          } catch {}
+        }
+        serverEvents = evs;
+        store.set("amc8q.cache", serverEvents);
+        const serverIds = new Set(evs.map(e => e.info.id));
+        outbox = outbox.filter(ev => !serverIds.has(ev.info.id));
+        for (const ev of outbox) if (!ev.sent) postEvent(ev); // retry unsent
+        store.set("amc8q.outbox", outbox);
+        syncState = "ok";
+      } catch { syncState = "fail"; }
+      renderSyncChip();
+      finish(syncState === "ok");
+    };
+    const script = document.createElement("script");
+    script.src = "https://docs.google.com/spreadsheets/d/" + SYNC.sheet + "/gviz/tq?tqx=responseHandler:" + cb + "&headers=1&_=" + Date.now();
+    script.onerror = () => { syncState = "fail"; renderSyncChip(); finish(false); };
+    document.body.appendChild(script);
+    setTimeout(() => { if (!done) { syncState = "fail"; renderSyncChip(); finish(false); } }, 12000);
+  });
+}
+
+function renderSyncChip() {
+  const chip = $("syncchip");
+  if (!chip) return;
+  if (syncState === "ok") { chip.className = "syncchip"; chip.textContent = "☁️ progress synced"; }
+  else if (syncState === "pending") { chip.className = "syncchip"; chip.textContent = "☁️ syncing…"; }
+  else { chip.className = "syncchip err"; chip.textContent = "⚠️ offline — progress saves here & syncs later"; }
+}
+
+/* ==================== DERIVED STATE (fold over events) ==================== */
+function foldKid(kid) {
+  const evs = allEvents().filter(e => e.kid === kid);
+  let lastReset = -1;
+  evs.forEach((e, i) => { if (e.type === "reset") lastReset = i; });
+  const active_ = evs.slice(lastReset + 1);
+  let pet = null;
+  const records = [];
+  for (const e of active_) {
+    if (e.type === "pet") pet = e.info.pet;
+    else if (e.type === "answer") {
+      const r = { y: e.info.y, n: e.info.n, a: e.info.a, ok: e.info.ok, t: e.info.t, d: e.info.d };
+      r.xp = xpFor(r);
+      records.push(r);
+    }
+  }
+  const xp = records.reduce((s, r) => s + r.xp, 0);
+  return { pet, records, xp, badges: computeBadges(records) };
+}
+
+function foldSettings() {
+  let daily = 1;
+  for (const e of allEvents()) if (e.type === "daily") daily = e.info.daily;
+  return { daily };
+}
+
+function computeBadges(records) {
+  const earned = {}; // id -> date
+  const grant = (id, d) => { if (!earned[id]) earned[id] = d; };
+  const solved = new Set();
+  const wrongSeen = new Set();
+  let run = 0;
+  const days = [];
+  for (const r of records) {
+    if (!days.length || days[days.length - 1] !== r.d) {
+      if (!days.includes(r.d)) days.push(r.d);
+    }
+    if (r.ok) {
+      const key = r.y + "-" + r.n;
+      if (wrongSeen.has(key)) grant("comeback", r.d);
+      solved.add(key);
+      run++;
+      if (solved.size >= 1) grant("first", r.d);
+      if (solved.size >= 10) grant("ten", r.d);
+      if (solved.size >= 50) grant("fifty", r.d);
+      if (solved.size >= 100) grant("hundred", r.d);
+      if (solved.size >= 250) grant("big250", r.d);
+      if (r.t < 60) grant("rocket", r.d);
+      if (r.n >= 20) grant("deep", r.d);
+      if (r.n === 25) grant("summit", r.d);
+      if (r.y <= 1998) grant("retro", r.d);
+      if (run >= 5) grant("sharp5", r.d);
+      if (run >= 10) grant("sharp10", r.d);
+    } else {
+      wrongSeen.add(r.y + "-" + r.n);
+      run = 0;
+    }
+  }
+  // streak badges from max consecutive-day run in history
+  const sorted = [...new Set(records.map(r => r.d))].sort();
+  let consec = 0, prev = null;
+  for (const d of sorted) {
+    if (prev) {
+      const p = new Date(prev + "T12:00:00"), c = new Date(d + "T12:00:00");
+      consec = (c - p === 86400000) ? consec + 1 : 1;
+    } else consec = 1;
+    if (consec >= 3) grant("streak3", d);
+    if (consec >= 7) grant("streak7", d);
+    if (consec >= 30) grant("streak30", d);
+    prev = d;
+  }
+  return earned;
+}
+
 function solvedYearsFor(p, n) { const ys = new Set(); for (const r of p.records) if (r.ok && r.n === n) ys.add(r.y); return ys; }
 function attemptedYearsFor(p, n) { const ys = new Set(); for (const r of p.records) if (r.n === n) ys.add(r.y); return ys; }
+function solvedCount(p) { const s = new Set(); for (const r of p.records) if (r.ok) s.add(r.y + "-" + r.n); return s.size; }
 function attemptsToday(p) { const t = todayStr(); return p.records.filter(r => r.d === t).length; }
 function streakOf(p) {
   const days = new Set(p.records.map(r => r.d));
   if (!days.size) return 0;
-  let d = new Date(); let cur = todayStr();
-  if (!days.has(cur)) d.setDate(d.getDate() - 1); // streak alive if practiced yesterday
+  let d = new Date();
+  if (!days.has(todayStr())) d.setDate(d.getDate() - 1);
   let streak = 0;
   for (;;) {
     const s = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
@@ -652,20 +857,25 @@ function streakOf(p) {
   }
   return streak;
 }
-function bestCorrectRun(p) {
-  let best = 0, cur = 0;
-  for (const r of p.records) { cur = r.ok ? cur + 1 : 0; if (cur > best) best = cur; }
-  return best;
-}
 function fmtTime(sec) {
   sec = Math.round(sec);
   return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
 }
+const petEmoji = p => (p.pet ? PETS[p.pet].stages[petStage(levelFromXp(p.xp).lvl)] : "🥚");
+
+/* active (in-progress) problem is per-device on purpose */
+const activeKey = kid => "amc8q.active." + kid;
+const getActive = kid => store.get(activeKey(kid), null);
+const setActive = (kid, a) => (a ? store.set(activeKey(kid), a) : store.del(activeKey(kid)));
+
+/* local-only prefs */
+const prefs = Object.assign({ sound: true }, store.get("amc8q.prefs", {}));
+const savePrefs = () => store.set("amc8q.prefs", prefs);
 
 /* ==================== SOUND ==================== */
 let audioCtx = null;
 function beep(notes) {
-  if (!settings.sound) return;
+  if (!prefs.sound) return;
   try {
     audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
     if (audioCtx.state === "suspended") audioCtx.resume();
@@ -688,7 +898,7 @@ const sndWrong = () => beep([[220, 0.2], [175, 0.35]]);
 const sndLevel = () => beep([[523, 0.12], [659, 0.12], [784, 0.12], [1047, 0.18], [784, 0.1], [1047, 0.35]]);
 const sndBadge = () => beep([[880, 0.1], [1109, 0.1], [1319, 0.25]]);
 
-/* ==================== CONFETTI ==================== */
+/* ==================== CONFETTI + TOASTS ==================== */
 function confetti(count) {
   const colors = ["#ffd21f", "#3ddc97", "#53c8ff", "#ff5f7a", "#b28bff", "#ff9ce0"];
   for (let i = 0; i < count; i++) {
@@ -705,8 +915,6 @@ function confetti(count) {
     setTimeout(() => c.remove(), 5500);
   }
 }
-
-/* ==================== TOASTS ==================== */
 function toast(emoji, text) {
   const t = document.createElement("div");
   t.className = "toast";
@@ -719,11 +927,12 @@ function toast(emoji, text) {
 
 /* ==================== SCREENS ==================== */
 const $ = id => document.getElementById(id);
-let currentKid = null;      // "zyler" | "kadyn"
-let pickedNum = null;       // 1..25 | "random"
+let currentKid = null;
+let pickedNum = null;
 let timerInterval = null;
 let problemLoaded = false;
 let pendingPetPick = null;
+let pendingLevelUp = null, pendingBadges = [];
 
 function show(screen) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
@@ -738,9 +947,8 @@ function renderSelect() {
   const box = $("kid-cards");
   box.innerHTML = "";
   for (const id of Object.keys(KIDS)) {
-    const p = loadProfile(id);
+    const p = foldKid(id);
     const { lvl } = levelFromXp(p.xp);
-    const solved = solvedSet(p).size;
     const card = document.createElement("button");
     card.type = "button";
     card.className = "kid-card";
@@ -748,16 +956,18 @@ function renderSelect() {
     card.innerHTML = `
       <div class="pet">${petEmoji(p)}</div>
       <div class="kname">${KIDS[id].name}</div>
-      <div class="klvl">Level ${lvl} · ${solved} solved</div>`;
+      <div class="klvl">Level ${lvl} · ${solvedCount(p)} solved</div>`;
     card.addEventListener("click", () => { sndClick(); enterKid(id); });
     box.appendChild(card);
   }
+  renderSyncChip();
 }
 
 function enterKid(id) {
   currentKid = id;
-  const p = loadProfile(id);
   document.documentElement.style.setProperty("--kid", KIDS[id].color);
+  syncNow().then(() => { if (currentKid === id && $("screen-dash").classList.contains("active")) renderDash(); });
+  const p = foldKid(id);
   if (!p.pet) { showPetPicker(); return; }
   renderDash();
   show("screen-dash");
@@ -787,9 +997,7 @@ function showPetPicker() {
 }
 $("pet-ok").addEventListener("click", () => {
   if (!pendingPetPick) return;
-  const p = loadProfile(currentKid);
-  p.pet = pendingPetPick;
-  saveProfile(currentKid, p);
+  sendEvent(currentKid, "pet", { pet: pendingPetPick, d: todayStr() });
   closeModal("ov-pet");
   sndBadge();
   renderDash();
@@ -798,7 +1006,7 @@ $("pet-ok").addEventListener("click", () => {
 
 /* ---------- dashboard ---------- */
 function renderDash() {
-  const p = loadProfile(currentKid);
+  const p = foldKid(currentKid);
   const kid = KIDS[currentKid];
   const { lvl, into, need } = levelFromXp(p.xp);
   $("d-name").textContent = kid.name;
@@ -809,8 +1017,7 @@ function renderDash() {
   $("d-xpfill").style.width = Math.round(100 * into / need) + "%";
   $("d-xptext").textContent = `${p.xp} XP total · ${into} / ${need} to level ${lvl + 1}`;
 
-  // hero stats
-  const solved = solvedSet(p).size;
+  const solved = solvedCount(p);
   const attempts = p.records.length;
   const acc = attempts ? Math.round(100 * p.records.filter(r => r.ok).length / attempts) : 0;
   const avgT = attempts ? p.records.reduce((s, r) => s + r.t, 0) / attempts : 0;
@@ -831,13 +1038,14 @@ function renderDash() {
 }
 
 function renderMission(p) {
+  const daily = foldSettings().daily;
   const used = attemptsToday(p);
-  const left = settings.daily - used;
+  const left = daily - used;
   $("mission-open").style.display = "none";
   $("mission-done").style.display = "none";
   $("mission-resume").style.display = "none";
 
-  if (p.active) { $("mission-resume").style.display = "block"; return; }
+  if (getActive(currentKid)) { $("mission-resume").style.display = "block"; return; }
   if (left <= 0) {
     $("mission-done").style.display = "block";
     $("done-msg").textContent = used > 1
@@ -848,7 +1056,7 @@ function renderMission(p) {
 
   $("mission-open").style.display = "block";
   $("mission-sub").textContent =
-    (settings.daily > 1 ? `${left} of ${settings.daily} problems left today · ` : "") +
+    (daily > 1 ? `${left} of ${daily} problems left today · ` : "") +
     "pick your problem number — higher numbers are harder & worth more XP";
   pickedNum = null;
   $("btn-start").disabled = true;
@@ -926,7 +1134,6 @@ function renderNumTable(p) {
 
 /* ---------- problem selection ---------- */
 function chooseProblem(p, num) {
-  let candidates = [];
   if (num === "random") {
     const nums = [];
     for (let n = 1; n <= 25; n++) if (solvedYearsFor(p, n).size < TOTAL_PER_NUM) nums.push(n);
@@ -936,42 +1143,41 @@ function chooseProblem(p, num) {
   const attemptedY = attemptedYearsFor(p, num);
   const freshY = YEARS.filter(y => !attemptedY.has(y));
   const retryY = YEARS.filter(y => attemptedY.has(y) && !solvedY.has(y));
-  candidates = freshY.length ? freshY : retryY;
+  const candidates = freshY.length ? freshY : retryY;
   const y = candidates[Math.floor(Math.random() * candidates.length)];
   return { y, n: num };
 }
 
 /* ---------- problem screen ---------- */
 async function startProblem(resume) {
-  const p = loadProfile(currentKid);
   if (!resume) {
+    const p = foldKid(currentKid);
     const { y, n } = chooseProblem(p, pickedNum);
-    p.active = { y, n, start: Date.now(), d: todayStr() };
-    saveProfile(currentKid, p);
+    setActive(currentKid, { y, n, start: Date.now(), d: todayStr() });
   }
-  const { y, n } = p.active;
-  $("p-contest").textContent = contestName(y);
-  $("p-num").textContent = n;
+  const a = getActive(currentKid);
+  if (!a) { renderDash(); show("screen-dash"); return; }
+  $("p-contest").textContent = contestName(a.y);
+  $("p-num").textContent = a.n;
   problemLoaded = false;
   renderAnswerButtons();
   show("screen-problem");
   startTimer();
-  await loadProblemBody(y, n);
+  await loadProblemBody(a.y, a.n);
 }
 
 function startTimer() {
   clearInterval(timerInterval);
   const tick = () => {
-    const p = loadProfile(currentKid);
-    if (!p.active) return;
-    $("p-timer").textContent = fmtTime((Date.now() - p.active.start) / 1000);
+    const a = getActive(currentKid);
+    if (!a) return;
+    $("p-timer").textContent = fmtTime((Date.now() - a.start) / 1000);
   };
   tick();
   timerInterval = setInterval(tick, 500);
 }
 
 function sanitizeProblemNodes(container) {
-  // strip scripts/styles/iframes and event handlers; unwrap links
   container.querySelectorAll("script, style, iframe, object, embed").forEach(el => el.remove());
   container.querySelectorAll("*").forEach(el => {
     for (const attr of [...el.attributes]) {
@@ -1006,7 +1212,6 @@ async function loadProblemBody(y, n, attempt = 0) {
       let node = probH2.nextElementSibling;
       while (node && node.tagName !== "H2") { frag.appendChild(node.cloneNode(true)); node = node.nextElementSibling; }
     } else {
-      // fallback: everything before the first Solution heading
       const root = doc.querySelector(".mw-parser-output") || doc.body;
       for (const child of [...root.children]) {
         if (/^H[12]$/.test(child.tagName) && /Solution/i.test(child.textContent)) break;
@@ -1036,9 +1241,7 @@ async function loadProblemBody(y, n, attempt = 0) {
     cancel.className = "btn ghost";
     cancel.textContent = "Back home (doesn't count)";
     cancel.addEventListener("click", () => {
-      const p = loadProfile(currentKid);
-      p.active = null;
-      saveProfile(currentKid, p);
+      setActive(currentKid, null);
       clearInterval(timerInterval);
       renderDash();
       show("screen-dash");
@@ -1071,55 +1274,27 @@ function renderAnswerButtons() {
 
 /* ---------- answering ---------- */
 function finishProblem(answer) {  // answer = letter or null (gave up)
-  const p = loadProfile(currentKid);
-  if (!p.active) return;
-  const { y, n, start } = p.active;
-  const t = Math.max(1, (Date.now() - start) / 1000);
+  const a = getActive(currentKid);
+  if (!a) return;
+  const { y, n, start } = a;
+  const t = Math.round(Math.max(1, (Date.now() - start) / 1000));
   const correct = answer === answerOf(y, n);
-  const wasMissedBefore = p.records.some(r => r.y === y && r.n === n && !r.ok);
 
-  let xp = XP_TRY, why = "+" + XP_TRY + " for trying";
-  if (correct) {
-    xp = xpCorrect(n);
-    why = "+" + xp + " for solving #" + n;
-    if (t < speedParSec(n)) { xp += SPEED_BONUS; why += " · +" + SPEED_BONUS + " speed bonus 🚀"; }
-  }
+  const before = foldKid(currentKid);
+  const oldLvl = levelFromXp(before.xp).lvl;
 
-  const oldLvl = levelFromXp(p.xp).lvl;
-  p.xp += xp;
-  p.records.push({ y, n, a: answer, ok: correct, t: Math.round(t), d: todayStr(), xp });
-  p.active = null;
-
-  // badges
-  const newBadges = [];
-  const grant = id => { if (!p.badges[id]) { p.badges[id] = todayStr(); newBadges.push(BADGES.find(b => b.id === id)); } };
-  const solvedCount = solvedSet(p).size;
-  if (solvedCount >= 1) grant("first");
-  if (solvedCount >= 10) grant("ten");
-  if (solvedCount >= 50) grant("fifty");
-  if (solvedCount >= 100) grant("hundred");
-  if (solvedCount >= 250) grant("big250");
-  const st = streakOf(p);
-  if (st >= 3) grant("streak3");
-  if (st >= 7) grant("streak7");
-  if (st >= 30) grant("streak30");
-  if (correct) {
-    if (t < 60) grant("rocket");
-    if (n >= 20) grant("deep");
-    if (n === 25) grant("summit");
-    if (y <= 1998) grant("retro");
-    if (wasMissedBefore) grant("comeback");
-  }
-  let run = 0;
-  for (let i = p.records.length - 1; i >= 0 && p.records[i].ok; i--) run++;
-  if (run >= 5) grant("sharp5");
-  if (run >= 10) grant("sharp10");
-
-  saveProfile(currentKid, p);
+  sendEvent(currentKid, "answer", { y, n, a: answer, ok: correct, t, d: todayStr() });
+  setActive(currentKid, null);
   clearInterval(timerInterval);
 
-  // result modal
-  const newLvl = levelFromXp(p.xp).lvl;
+  const after = foldKid(currentKid);
+  const newLvl = levelFromXp(after.xp).lvl;
+  const rec = { y, n, ok: correct, t };
+  const xp = xpFor(rec);
+  const why = correct
+    ? "+" + (20 + 4 * n) + " for solving #" + n + (t < speedParSec(n) ? " · +" + SPEED_BONUS + " speed bonus 🚀" : "")
+    : "+" + XP_TRY + " for trying";
+
   $("r-emoji").textContent = correct ? ["🎉", "🤩", "🦸", "🧠", "💥"][Math.floor(Math.random() * 5)] : "🙈";
   $("r-title").textContent = correct ? "CORRECT!" : (answer ? "Not this time…" : "Revealed!");
   $("r-title").className = correct ? "good" : "bad";
@@ -1132,16 +1307,14 @@ function finishProblem(answer) {  // answer = letter or null (gave up)
   openModal("ov-result");
   if (correct) { sndCorrect(); confetti(90); } else { sndWrong(); }
 
-  // queue level-up modal after result closes
   pendingLevelUp = newLvl > oldLvl ? { oldLvl, newLvl } : null;
-  pendingBadges = newBadges;
+  pendingBadges = BADGES.filter(b => after.badges[b.id] && !before.badges[b.id]);
+  syncNow(); // pull any cross-device updates while they read the result
 }
-
-let pendingLevelUp = null, pendingBadges = [];
 
 $("r-home").addEventListener("click", () => {
   closeModal("ov-result");
-  const p = loadProfile(currentKid);
+  const p = foldKid(currentKid);
   if (pendingLevelUp) {
     const { oldLvl, newLvl } = pendingLevelUp;
     pendingLevelUp = null;
@@ -1161,14 +1334,62 @@ $("r-home").addEventListener("click", () => {
 $("l-ok").addEventListener("click", () => { closeModal("ov-levelup"); afterResultFlow(); });
 
 function afterResultFlow() {
-  for (const b of pendingBadges) {
-    toast(b.e, "Trophy earned: " + b.n + "!");
-  }
+  for (const b of pendingBadges) toast(b.e, "Trophy earned: " + b.n + "!");
   if (pendingBadges.length) sndBadge();
   pendingBadges = [];
   renderDash();
   show("screen-dash");
 }
+
+/* ---------- parent gate + settings ---------- */
+async function sha256Hex(s) {
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s));
+  return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+$("btn-settings").addEventListener("click", () => {
+  $("pw-input").value = "";
+  $("pw-err").textContent = "";
+  openModal("ov-password");
+  setTimeout(() => $("pw-input").focus(), 100);
+});
+$("pw-cancel").addEventListener("click", () => closeModal("ov-password"));
+async function tryUnlock() {
+  const val = $("pw-input").value;
+  const hash = await sha256Hex(val);
+  if (hash === PARENT_HASH) {
+    closeModal("ov-password");
+    $("set-daily").value = foldSettings().daily;
+    openModal("ov-settings");
+  } else {
+    $("pw-err").textContent = "Nope — that's not it! 🙅";
+    $("pw-input").value = "";
+    const m = $("pw-modal");
+    m.classList.remove("shake"); void m.offsetWidth; m.classList.add("shake");
+  }
+}
+$("pw-ok").addEventListener("click", tryUnlock);
+$("pw-input").addEventListener("keydown", e => { if (e.key === "Enter") tryUnlock(); });
+
+$("set-ok").addEventListener("click", () => {
+  const v = parseInt($("set-daily").value, 10);
+  if (Number.isInteger(v) && v >= 1 && v <= 20 && v !== foldSettings().daily) {
+    sendEvent("*", "daily", { daily: v, d: todayStr() });
+  }
+  closeModal("ov-settings");
+  renderSelect();
+});
+document.querySelectorAll("[data-reset]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    const id = btn.dataset.reset;
+    if (confirm("Really erase ALL of " + KIDS[id].name + "'s progress on every device? This cannot be undone.")) {
+      sendEvent(id, "reset", { d: todayStr() });
+      setActive(id, null);
+      renderSelect();
+      closeModal("ov-settings");
+    }
+  });
+});
 
 /* ---------- wire up ---------- */
 $("btn-start").addEventListener("click", () => { if (pickedNum) { sndClick(); startProblem(false); } });
@@ -1179,39 +1400,29 @@ $("btn-giveup").addEventListener("click", () => { if (problemLoaded) openModal("
 $("g-cancel").addEventListener("click", () => closeModal("ov-giveup"));
 $("g-yes").addEventListener("click", () => { closeModal("ov-giveup"); finishProblem(null); });
 
-$("btn-settings").addEventListener("click", () => {
-  $("set-daily").value = settings.daily;
-  openModal("ov-settings");
-});
-$("set-ok").addEventListener("click", () => {
-  const v = parseInt($("set-daily").value, 10);
-  if (v >= 1 && v <= 20) settings.daily = v;
-  saveSettings();
-  closeModal("ov-settings");
-  renderSelect();
-});
-document.querySelectorAll("[data-reset]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const id = btn.dataset.reset;
-    if (confirm("Really erase ALL of " + KIDS[id].name + "'s progress? This cannot be undone.")) {
-      store.del(pKey(id));
-      renderSelect();
-      closeModal("ov-settings");
-    }
-  });
-});
-
 $("soundbtn").addEventListener("click", () => {
-  settings.sound = !settings.sound;
-  saveSettings();
-  $("soundbtn").textContent = settings.sound ? "🔊" : "🔇";
-  if (settings.sound) sndClick();
+  prefs.sound = !prefs.sound;
+  savePrefs();
+  $("soundbtn").textContent = prefs.sound ? "🔊" : "🔇";
+  if (prefs.sound) sndClick();
 });
-$("soundbtn").textContent = settings.sound ? "🔊" : "🔇";
+$("soundbtn").textContent = prefs.sound ? "🔊" : "🔇";
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    syncNow().then(() => {
+      if ($("screen-dash").classList.contains("active")) renderDash();
+      else if ($("screen-select").classList.contains("active")) renderSelect();
+    });
+  }
+});
 
 /* ---------- boot ---------- */
-renderSelect();
+renderSelect();          // instant, from cache
 show("screen-select");
+syncNow().then(() => {
+  if ($("screen-select").classList.contains("active")) renderSelect();
+});
 </script>
 </body>
 </html>

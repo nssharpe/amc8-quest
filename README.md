@@ -14,8 +14,18 @@ timer. Solving earns XP, levels, an evolving pet, and trophies.
   in this repo (problems are © MAA); only the answer letters (facts) are embedded.
 - **Coverage**: all 41 contests — 1985–1998 AJHSME and 1999–2026 AMC 8
   (2021 was canceled) — 1,025 problems total.
-- **Progress is stored in `localStorage`**, per kid, on the device/browser used.
-  There is no backend, so progress does not sync across devices.
+- **Progress syncs across devices** through a tiny serverless backend on the
+  owner's Google account: every game event (answer, pet choice, reset, settings
+  change) is POSTed to a Google Form, which appends it to a link-readable
+  response Sheet; the app reads the full event log back via the Sheets gviz
+  JSONP endpoint and folds it into per-kid state (XP is recomputed from the
+  formula, never trusted from storage). `localStorage` acts as an offline
+  cache + outbox, so the app still works without internet and syncs later.
+  Unknown/malformed rows in the sheet are ignored, and duplicate rows are
+  deduped by event id.
+- **Grown-up settings are password-protected** (SHA-256 hash in source; the
+  gate keeps kids out, it is not high security). Settings: problems per day
+  (synced), and per-kid full resets (synced, so they apply on every device).
 
 ## Game rules
 
@@ -24,7 +34,8 @@ timer. Solving earns XP, levels, an evolving pet, and trophies.
 - Picking a number serves a random not-yet-attempted year for that number;
   once every year has been attempted, missed problems come back for retry.
   A number is disabled once all 41 of its problems are solved.
-- Refreshing mid-problem resumes the same problem with the clock still running.
+- An in-progress problem is per-device: refreshing resumes it with the clock
+  still running.
   Quitting/giving up counts as a wrong answer (5 consolation XP).
 - XP: `20 + 4×number` for a correct answer, `+15` speed bonus under par
   (`30 + 6×number` seconds), `5` for a wrong answer or give-up.
