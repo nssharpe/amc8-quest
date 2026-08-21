@@ -533,11 +533,8 @@
       <input type="number" id="set-daily" min="1" max="20" step="1">
     </div>
     <div class="danger-zone">
-      <p>Danger zone — erases all progress, XP, and trophies for that kid, on every device. Cannot be undone.</p>
-      <div class="btnrow" style="margin-top:0">
-        <button class="btn coral" data-reset="zyler">Reset Zyler</button>
-        <button class="btn coral" data-reset="kadyn">Reset Kadyn</button>
-      </div>
+      <p>Danger zone — erases all progress, XP, and trophies for that player, on every device. Cannot be undone.</p>
+      <div class="btnrow" style="margin-top:0" id="reset-btns"></div>
     </div>
     <div class="btnrow"><button class="btn gold" id="set-ok">Save & close</button></div>
   </div>
@@ -594,7 +591,13 @@ const ANSWERS = {
 };
 const YEARS = Object.keys(ANSWERS).map(Number).sort((a, b) => a - b);
 const TOTAL_PER_NUM = YEARS.length; // 41
-const KIDS = { zyler: { name: "Zyler", color: "#53c8ff" }, kadyn: { name: "Kadyn", color: "#ff9ce0" } };
+const KIDS = {
+  zyler:    { name: "Zyler",    color: "#53c8ff" },
+  kadyn:    { name: "Kadyn",    color: "#ff9ce0" },
+  matthias: { name: "Matthias", color: "#ffb84d" },
+  nate:     { name: "Nate",     color: "#3ddc97" },
+  julia:    { name: "Julia",    color: "#b28bff" },
+};
 const LETTERS = ["A", "B", "C", "D", "E"];
 
 const contestName = y => (y <= 1998 ? y + " AJHSME" : y + " AMC 8");
@@ -1379,17 +1382,23 @@ $("set-ok").addEventListener("click", () => {
   closeModal("ov-settings");
   renderSelect();
 });
-document.querySelectorAll("[data-reset]").forEach(btn => {
-  btn.addEventListener("click", () => {
-    const id = btn.dataset.reset;
-    if (confirm("Really erase ALL of " + KIDS[id].name + "'s progress on every device? This cannot be undone.")) {
-      sendEvent(id, "reset", { d: todayStr() });
-      setActive(id, null);
-      renderSelect();
-      closeModal("ov-settings");
-    }
-  });
-});
+(function buildResetButtons() {
+  const box = $("reset-btns");
+  for (const id of Object.keys(KIDS)) {
+    const btn = document.createElement("button");
+    btn.className = "btn coral";
+    btn.textContent = "Reset " + KIDS[id].name;
+    btn.addEventListener("click", () => {
+      if (confirm("Really erase ALL of " + KIDS[id].name + "'s progress on every device? This cannot be undone.")) {
+        sendEvent(id, "reset", { d: todayStr() });
+        setActive(id, null);
+        renderSelect();
+        closeModal("ov-settings");
+      }
+    });
+    box.appendChild(btn);
+  }
+})();
 
 /* ---------- wire up ---------- */
 $("btn-start").addEventListener("click", () => { if (pickedNum) { sndClick(); startProblem(false); } });
