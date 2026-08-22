@@ -385,7 +385,6 @@
   /* ================= SCRATCHPAD ================= */
   .scratch-layer { position: absolute; top: 0; left: 0; z-index: 40; pointer-events: none; touch-action: pan-y; }
   #scratch-live.on { pointer-events: auto; cursor: crosshair; }
-  #scratch-live.on.scrollmode { pointer-events: none; }
   body.scratching { overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
   .scratch-toggle {
     position: fixed; bottom: 1rem; right: 1rem; z-index: 45;
@@ -499,7 +498,7 @@
       <button class="btn ghost" id="btn-giveup">I give up 😵</button>
     </div>
     <p class="attribution">Problem © MAA · loaded live from the <a href="https://artofproblemsolving.com/wiki/" target="_blank" rel="noopener">AoPS Wiki</a></p>
-    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll (or tap ✋).</p>
+    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll.</p>
     <div class="scratch-space">✏️ scratch space — scroll down for room to draw</div>
   </div>
 
@@ -605,7 +604,6 @@
 <button class="scratch-toggle" id="scratch-toggle" hidden>✏️ Scratch</button>
 <div class="scratch-bar" id="scratch-bar" hidden>
   <span id="scratch-colors" style="display:flex;flex-direction:column;gap:.35rem;align-items:center"></span>
-  <button class="tool" id="sc-scroll" title="Scroll mode (one finger scrolls)">✋</button>
   <button class="tool" id="sc-eraser" title="Eraser">🧽</button>
   <button class="tool" id="sc-undo" title="Undo">↶</button>
   <button class="tool" id="sc-clear" title="Clear all">🗑️</button>
@@ -1724,15 +1722,6 @@ const scratch = (() => {
     tool = tool === "erase" ? "pen" : "erase";
     $("sc-eraser").classList.toggle("sel", tool === "erase");
   });
-  let scrollMode = false;
-  function setScrollMode(on) {
-    scrollMode = on;
-    cL.classList.toggle("scrollmode", on);
-    $("sc-scroll").textContent = on ? "✏️" : "✋";
-    $("sc-scroll").classList.toggle("sel", on);
-    $("sc-scroll").title = on ? "Back to drawing" : "Scroll mode (one finger scrolls)";
-  }
-  $("sc-scroll").addEventListener("click", () => setScrollMode(!scrollMode));
   $("sc-undo").addEventListener("click", () => { strokes.pop(); redraw(); });
   $("sc-clear").addEventListener("click", () => { strokes = []; redraw(); });
   $("sc-done").addEventListener("click", () => setActive(false));
@@ -1745,9 +1734,8 @@ const scratch = (() => {
     $("scratch-bar").hidden = !on;
     $("scratch-toggle").hidden = on || !visible;
     if (on) {
-      setScrollMode(false);
       size();
-      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll · ✋ for scroll mode"); store.set("amc8q.scratchHint", true); }
+      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll"); store.set("amc8q.scratchHint", true); }
     } else { pointers.clear(); cur = null; ctxL.clearRect(0, 0, cL.width, cL.height); }
   }
   function setVisible(v) {
