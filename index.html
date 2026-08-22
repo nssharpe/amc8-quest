@@ -345,6 +345,23 @@
   .pw-err { color: var(--coral); font-weight: 800; font-size: .9rem; margin-top: .5rem; min-height: 1.3em; }
   .modal.shake { animation: shake .4s; }
   @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-10px); } 40%,80% { transform: translateX(10px); } }
+  .uncount-row { display: flex; gap: .5rem; justify-content: center; flex-wrap: wrap; }
+  .uncount-row select, .uncount-row input {
+    font: inherit; font-weight: 800; background: var(--night-deep); color: var(--text);
+    border: 2px solid var(--line); border-radius: 10px; padding: .35rem .5rem;
+  }
+  .uncount-row input { width: 82px; text-align: center; }
+  .uncount-row .btn { padding: .45rem 1rem; font-size: .95rem; }
+  .pw-err.good { color: var(--mint); }
+  /* problem-image fallbacks (inside the white paper card) */
+  .paper .tex-fallback { font-family: ui-monospace, Consolas, monospace; background: #fff3c4; color: #4a3b00; padding: 0 .3em; border-radius: 4px; }
+  .paper .img-missing { display: inline-block; color: #a33; font-weight: 800; font-size: .9rem; }
+  .paper-banner {
+    background: #fff3c4; color: #4a3b00; border: 2px solid #e0c252; border-radius: 12px;
+    padding: .5rem .8rem; margin-bottom: .8rem; font-weight: 800; font-size: .92rem;
+    display: flex; align-items: center; gap: .6rem; flex-wrap: wrap;
+  }
+  .paper-banner .btn { padding: .3rem .9rem; font-size: .9rem; }
   .danger-zone { border-top: 2px dashed var(--line); margin-top: 1.2rem; padding-top: 1rem; }
   .danger-zone p { font-size: .85rem; color: var(--text-dim); font-weight: 700; margin-bottom: .6rem; }
 
@@ -528,6 +545,16 @@
       <input type="number" id="set-daily" min="1" max="20" step="1">
     </div>
     <div class="danger-zone">
+      <p>Un-count a problem — wipes one player's attempts at a single problem (e.g. it displayed broken) so it can be served again.</p>
+      <div class="uncount-row">
+        <select id="un-kid" aria-label="player"></select>
+        <input type="number" id="un-year" placeholder="year" min="1985" max="2026" aria-label="year">
+        <input type="number" id="un-num" placeholder="#" min="1" max="25" aria-label="problem number">
+        <button class="btn" id="un-go">Un-count</button>
+      </div>
+      <div class="pw-err" id="un-msg"></div>
+    </div>
+    <div class="danger-zone">
       <p>Danger zone — erases all progress, XP, and trophies for that player, on every device. Cannot be undone.</p>
       <div class="btnrow" style="margin-top:0" id="reset-btns"></div>
     </div>
@@ -688,6 +715,9 @@ function validEvent(ev) {
     case "pet": return i.pet in PETS;
     case "reset": return true;
     case "daily": return Number.isInteger(i.daily) && i.daily >= 1 && i.daily <= 20;
+    case "void": // un-count a player's attempts at one problem (e.g. it rendered broken)
+      return ANSWERS[i.y] !== undefined && Number.isInteger(i.n) && i.n >= 1 && i.n <= 25 &&
+        typeof i.ts === "number" && typeof i.d === "string" && DATE_RE.test(i.d);
     default: return false;
   }
 }
@@ -771,11 +801,16 @@ function foldKid(kid) {
   let lastReset = -1;
   evs.forEach((e, i) => { if (e.type === "reset") lastReset = i; });
   const active_ = evs.slice(lastReset + 1);
+  const voids = active_.filter(e => e.type === "void").map(e => e.info);
+  // an answer is voided if a void for the same problem was issued after it
+  // (answers carry a ms timestamp; older ones without it fall back to the date)
+  const isVoided = a => voids.some(v => v.y === a.y && v.n === a.n && (a.ts ? a.ts < v.ts : a.d <= v.d));
   let pet = null;
   const records = [];
   for (const e of active_) {
     if (e.type === "pet") pet = e.info.pet;
     else if (e.type === "answer") {
+      if (isVoided(e.info)) continue;
       const r = { y: e.info.y, n: e.info.n, a: e.info.a, ok: e.info.ok, t: e.info.t, d: e.info.d };
       r.xp = xpFor(r);
       records.push(r);
@@ -1177,6 +1212,11 @@ function startTimer() {
 
 function sanitizeProblemNodes(container) {
   container.querySelectorAll("script, style, iframe, object, embed").forEach(el => el.remove());
+  // plain eager <img src> only — wiki thumbnails carry srcset, and lazy images never load off-screen
+  container.querySelectorAll("img").forEach(im => {
+    im.removeAttribute("srcset"); im.removeAttribute("sizes");
+    im.setAttribute("loading", "eager"); im.setAttribute("decoding", "async");
+  });
   container.querySelectorAll("*").forEach(el => {
     for (const attr of [...el.attributes]) {
       if (/^on/i.test(attr.name) || attr.name === "srcdoc") el.removeAttribute(attr.name);
@@ -1214,6 +1254,34 @@ function hasChoices(frag) {
   return /\(\s*A\s*\)/.test(s) || graphical;
 }
 
+// rough LaTeX -> plain text for the "image didn't load" fallback
+function texToText(tex) {
+  return tex
+    .replace(/^\$+|\$+$/g, "")
+    .replace(/\\(?:qquad|quad)/g, "   ")
+    .replace(/\\(?:textbf|mathrm|text|textsc|mathbf)\s*\{([^{}]*)\}/g, "$1")
+    .replace(/\^\s*(?:\{\\circ\}|\\circ)/g, "°").replace(/\\circ/g, "°").replace(/\\times/g, "×").replace(/\\cdot/g, "·").replace(/\\pi/g, "π")
+    .replace(/\\(?:d|t)?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, "($1)/($2)")
+    .replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)")
+    .replace(/\\(?:[,;!]|\s)/g, " ")
+    .replace(/[{}]/g, "")
+    .replace(/\s+/g, " ").trim();
+}
+
+// resolves when the image has loaded or given up; failed loads are retried with a cache-buster
+function loadImg(im, retries) {
+  return new Promise(res => {
+    const bust = () => { try { const u = new URL(im.src); u.searchParams.set("r", Date.now()); im.src = u.href; } catch { res(); } };
+    const tryLoad = left => {
+      if (im.complete && im.naturalWidth > 0) return res();
+      im.onload = () => { im.onload = im.onerror = null; res(); };
+      im.onerror = () => { im.onload = im.onerror = null; if (left > 0) { bust(); tryLoad(left - 1); } else res(); };
+      if (im.complete) bust(); // already failed before we attached listeners — kick it
+    };
+    tryLoad(retries);
+  });
+}
+
 function extractSection(doc, headingRe) {
   const h2 = [...doc.querySelectorAll("h2")].find(h => headingRe.test(h.textContent.replace(/\[edit\]/g, "").trim()));
   const frag = document.createElement("div");
@@ -1247,17 +1315,33 @@ async function loadProblemBody(y, n, attempt = 0) {
     }
     sanitizeProblemNodes(frag);
     if (!frag.textContent.trim() && !frag.querySelector("img")) throw new Error("empty problem");
-    // don't reveal a half-rendered problem: wait for its images (choices are often images)
+    // Don't reveal a half-rendered problem: the numbers, diagrams and answer choices
+    // are images. Wait for them (retrying failures), and if any still won't load,
+    // show the LaTeX source text instead so information is never silently missing.
     const imgs = [...frag.querySelectorAll("img")];
-    await Promise.race([
-      Promise.all(imgs.map(im => new Promise(res => {
-        if (im.complete) return res();
-        im.addEventListener("load", res, { once: true });
-        im.addEventListener("error", res, { once: true });
-      }))),
-      new Promise(r => setTimeout(r, 8000)),
-    ]);
+    await Promise.race([Promise.all(imgs.map(im => loadImg(im, 2))), new Promise(r => setTimeout(r, 20000))]);
+    let missing = 0;
+    for (const im of imgs) {
+      if (im.complete && im.naturalWidth > 0) continue;
+      missing++;
+      const alt = (im.getAttribute("alt") || "").trim();
+      const fb = document.createElement("span");
+      if (alt && !alt.startsWith("[asy]")) { fb.className = "tex-fallback"; fb.textContent = texToText(alt); }
+      else { fb.className = "img-missing"; fb.textContent = "[picture didn't load]"; }
+      im.replaceWith(fb);
+    }
     body.innerHTML = "";
+    if (missing) {
+      const bar = document.createElement("div");
+      bar.className = "paper-banner";
+      bar.append(`⚠️ ${missing} picture${missing > 1 ? "s" : ""} didn't load — showing the math as text instead.`);
+      const rb = document.createElement("button");
+      rb.className = "btn gold";
+      rb.textContent = "Reload problem 🔄";
+      rb.addEventListener("click", () => loadProblemBody(y, n));
+      bar.appendChild(rb);
+      body.appendChild(bar);
+    }
     while (frag.firstChild) body.appendChild(frag.firstChild);
     problemLoaded = true;
   } catch (err) {
@@ -1319,7 +1403,7 @@ function finishProblem(answer) {  // answer = letter or null (gave up)
   const before = foldKid(currentKid);
   const oldLvl = levelFromXp(before.xp).lvl;
 
-  sendEvent(currentKid, "answer", { y, n, a: answer, ok: correct, t, d: todayStr() });
+  sendEvent(currentKid, "answer", { y, n, a: answer, ok: correct, t, d: todayStr(), ts: Date.now() });
   setActive(currentKid, null);
   clearInterval(timerInterval);
 
@@ -1415,6 +1499,27 @@ $("set-ok").addEventListener("click", () => {
   closeModal("ov-settings");
   renderSelect();
 });
+(function buildUncount() {
+  const sel = $("un-kid");
+  for (const id of Object.keys(KIDS)) {
+    const o = document.createElement("option");
+    o.value = id; o.textContent = KIDS[id].name;
+    sel.appendChild(o);
+  }
+  $("un-go").addEventListener("click", () => {
+    const kid = sel.value, y = parseInt($("un-year").value, 10), n = parseInt($("un-num").value, 10);
+    const msg = $("un-msg");
+    msg.className = "pw-err";
+    if (!ANSWERS[y] || !(n >= 1 && n <= 25)) { msg.textContent = "Enter a contest year (1985–2026, no 2021) and a problem number 1–25."; return; }
+    const hits = foldKid(kid).records.filter(r => r.y === y && r.n === n).length;
+    if (!hits && !confirm(`No attempts by ${KIDS[kid].name} at ${contestName(y)} #${n} have synced yet. Un-count anyway? (Also covers attempts still syncing from another device.)`)) return;
+    sendEvent(kid, "void", { y, n, ts: Date.now(), d: todayStr() });
+    msg.className = "pw-err good";
+    msg.textContent = `✅ ${contestName(y)} #${n} un-counted for ${KIDS[kid].name} — it can be served again.`;
+    renderSelect();
+  });
+})();
+
 (function buildResetButtons() {
   const box = $("reset-btns");
   for (const id of Object.keys(KIDS)) {
