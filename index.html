@@ -383,7 +383,7 @@
   .soundbtn { position: fixed; top: .7rem; right: .7rem; z-index: 60; background: var(--card); border: 2px solid var(--line); border-radius: 12px; font-size: 1.1rem; padding: .3rem .55rem; cursor: pointer; }
 
   /* ================= SCRATCHPAD ================= */
-  .scratch-layer { position: absolute; top: 0; left: 0; z-index: 40; pointer-events: none; touch-action: pan-y; }
+  .scratch-layer { position: absolute; top: 0; left: 0; z-index: 40; pointer-events: none; touch-action: pan-y pinch-zoom; }
   #scratch-live.on { pointer-events: auto; cursor: crosshair; }
   body.scratching { overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
   .scratch-toggle {
@@ -498,7 +498,7 @@
       <button class="btn ghost" id="btn-giveup">I give up 😵</button>
     </div>
     <p class="attribution">Problem © MAA · loaded live from the <a href="https://artofproblemsolving.com/wiki/" target="_blank" rel="noopener">AoPS Wiki</a></p>
-    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll.</p>
+    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll or pinch-zoom.</p>
     <div class="scratch-space">✏️ scratch space — scroll down for room to draw</div>
   </div>
 
@@ -1653,7 +1653,8 @@ const scratch = (() => {
     ctxC.clearRect(0, 0, cC.width, cC.height);
     for (const s of strokes) drawStroke(ctxC, s);
   }
-  const pt = e => ({ x: e.clientX + window.scrollX, y: e.clientY + window.scrollY });
+  // page coords (pageX/Y stay correct while pinch-zoomed; synthetic test events lack them)
+  const pt = e => (e.isTrusted ? { x: e.pageX, y: e.pageY } : { x: e.clientX + window.scrollX, y: e.clientY + window.scrollY });
 
   function down(e) {
     if (e.pointerType === "pen") lastPenTime = Date.now();
@@ -1697,7 +1698,7 @@ const scratch = (() => {
   cL.addEventListener("pointerup", up);
   cL.addEventListener("pointercancel", up);
   cL.addEventListener("contextmenu", e => e.preventDefault());
-  // touch-action is pan-y, so the browser scrolls natively for two fingers; a lone
+  // touch-action allows native pan + pinch-zoom, so two fingers scroll/zoom natively; a lone
   // finger is claimed for drawing by cancelling its default (must be non-passive)
   const claimSingleTouch = e => { if (e.touches.length === 1) e.preventDefault(); };
   cL.addEventListener("touchstart", claimSingleTouch, { passive: false });
@@ -1735,7 +1736,7 @@ const scratch = (() => {
     $("scratch-toggle").hidden = on || !visible;
     if (on) {
       size();
-      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll"); store.set("amc8q.scratchHint", true); }
+      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll or zoom"); store.set("amc8q.scratchHint", true); }
     } else { pointers.clear(); cur = null; ctxL.clearRect(0, 0, cL.width, cL.height); }
   }
   function setVisible(v) {
