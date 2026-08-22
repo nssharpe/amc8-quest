@@ -383,8 +383,9 @@
   .soundbtn { position: fixed; top: .7rem; right: .7rem; z-index: 60; background: var(--card); border: 2px solid var(--line); border-radius: 12px; font-size: 1.1rem; padding: .3rem .55rem; cursor: pointer; }
 
   /* ================= SCRATCHPAD ================= */
-  .scratch-layer { position: absolute; top: 0; left: 0; z-index: 40; pointer-events: none; touch-action: none; }
+  .scratch-layer { position: absolute; top: 0; left: 0; z-index: 40; pointer-events: none; touch-action: pan-y; }
   #scratch-live.on { pointer-events: auto; cursor: crosshair; }
+  #scratch-live.on.scrollmode { pointer-events: none; }
   body.scratching { overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
   .scratch-toggle {
     position: fixed; bottom: 1rem; right: 1rem; z-index: 45;
@@ -498,7 +499,7 @@
       <button class="btn ghost" id="btn-giveup">I give up 😵</button>
     </div>
     <p class="attribution">Problem © MAA · loaded live from the <a href="https://artofproblemsolving.com/wiki/" target="_blank" rel="noopener">AoPS Wiki</a></p>
-    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll.</p>
+    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll (or tap ✋).</p>
     <div class="scratch-space">✏️ scratch space — scroll down for room to draw</div>
   </div>
 
@@ -604,6 +605,7 @@
 <button class="scratch-toggle" id="scratch-toggle" hidden>✏️ Scratch</button>
 <div class="scratch-bar" id="scratch-bar" hidden>
   <span id="scratch-colors" style="display:flex;flex-direction:column;gap:.35rem;align-items:center"></span>
+  <button class="tool" id="sc-scroll" title="Scroll mode (one finger scrolls)">✋</button>
   <button class="tool" id="sc-eraser" title="Eraser">🧽</button>
   <button class="tool" id="sc-undo" title="Undo">↶</button>
   <button class="tool" id="sc-clear" title="Clear all">🗑️</button>
@@ -1605,7 +1607,7 @@ const scratch = (() => {
   let active = false, visible = false, tool = "pen", color = COLORS[0];
   let strokes = [], cur = null, dpr = 1;
   const pointers = new Map();
-  let lastPenTime = 0, scrollAnchor = null;
+  let lastPenTime = 0;
 
   let sizePending = false;
   function size() {
@@ -1613,7 +1615,7 @@ const scratch = (() => {
     sizePending = false;
     const w = document.documentElement.clientWidth;
     const h = document.documentElement.scrollHeight;
-    const d = window.devicePixelRatio || 1;
+    const d = Math.min(window.devicePixelRatio || 1, 2); // line art: 2x is plenty, and halves GPU memory on phones
     if (w === cC.clientWidth && h === cC.clientHeight && d === dpr) return; // unchanged: don't wipe + redraw
     dpr = d;
     for (const c of [cC, cL]) {
@@ -1658,11 +1660,10 @@ const scratch = (() => {
   function down(e) {
     if (e.pointerType === "pen") lastPenTime = Date.now();
     else if (e.pointerType === "touch" && Date.now() - lastPenTime < 800) return; // palm
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
-    const touches = [...pointers.values()].filter(p => p.type === "touch");
-    if (touches.length >= 2) { // second finger: stop drawing, start scrolling
+    const touchesBefore = [...pointers.values()].filter(p => p.type === "touch").length;
+    pointers.set(e.pointerId, { type: e.pointerType });
+    if (e.pointerType === "touch" && touchesBefore >= 1) { // second finger: this is a scroll, not a stroke
       if (cur) { cur = null; ctxL.clearRect(0, 0, cL.width, cL.height); }
-      scrollAnchor = (touches[0].y + touches[1].y) / 2;
       return;
     }
     try { cL.setPointerCapture(e.pointerId); } catch {}
@@ -1670,19 +1671,10 @@ const scratch = (() => {
     const w = e.pointerType === "pen" && e.pressure > 0 ? base * (0.5 + e.pressure) : base;
     cur = { id: e.pointerId, tool, color: color.c, halo: color.h, w, pts: [pt(e)] };
     if (tool === "erase") drawStroke(ctxC, cur); else drawStroke(ctxL, cur);
-    e.preventDefault();
   }
   function move(e) {
-    const rec = pointers.get(e.pointerId);
-    if (rec) { rec.x = e.clientX; rec.y = e.clientY; }
-    const touches = [...pointers.values()].filter(p => p.type === "touch");
-    if (touches.length >= 2 && scrollAnchor !== null) {
-      const mid = (touches[0].y + touches[1].y) / 2;
-      window.scrollBy(0, scrollAnchor - mid);
-      scrollAnchor = mid;
-      return;
-    }
     if (!cur || e.pointerId !== cur.id) return;
+    if ([...pointers.values()].filter(p => p.type === "touch").length >= 2) return; // browser is scrolling
     let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
     if (!evs.length) evs = [e];
     for (const ce of evs) cur.pts.push(pt(ce));
@@ -1693,12 +1685,10 @@ const scratch = (() => {
       ctxL.clearRect(0, 0, cL.width, cL.height);
       drawStroke(ctxL, cur);
     }
-    e.preventDefault();
   }
   function up(e) {
     pointers.delete(e.pointerId);
     if (!pointers.size && sizePending) setTimeout(size, 50);
-    if ([...pointers.values()].filter(p => p.type === "touch").length < 2) scrollAnchor = null;
     if (!cur || e.pointerId !== cur.id) return;
     strokes.push(cur);
     if (cur.tool !== "erase") { drawStroke(ctxC, cur); ctxL.clearRect(0, 0, cL.width, cL.height); }
@@ -1709,6 +1699,11 @@ const scratch = (() => {
   cL.addEventListener("pointerup", up);
   cL.addEventListener("pointercancel", up);
   cL.addEventListener("contextmenu", e => e.preventDefault());
+  // touch-action is pan-y, so the browser scrolls natively for two fingers; a lone
+  // finger is claimed for drawing by cancelling its default (must be non-passive)
+  const claimSingleTouch = e => { if (e.touches.length === 1) e.preventDefault(); };
+  cL.addEventListener("touchstart", claimSingleTouch, { passive: false });
+  cL.addEventListener("touchmove", claimSingleTouch, { passive: false });
 
   // toolbar
   const swatches = $("scratch-colors");
@@ -1729,6 +1724,15 @@ const scratch = (() => {
     tool = tool === "erase" ? "pen" : "erase";
     $("sc-eraser").classList.toggle("sel", tool === "erase");
   });
+  let scrollMode = false;
+  function setScrollMode(on) {
+    scrollMode = on;
+    cL.classList.toggle("scrollmode", on);
+    $("sc-scroll").textContent = on ? "✏️" : "✋";
+    $("sc-scroll").classList.toggle("sel", on);
+    $("sc-scroll").title = on ? "Back to drawing" : "Scroll mode (one finger scrolls)";
+  }
+  $("sc-scroll").addEventListener("click", () => setScrollMode(!scrollMode));
   $("sc-undo").addEventListener("click", () => { strokes.pop(); redraw(); });
   $("sc-clear").addEventListener("click", () => { strokes = []; redraw(); });
   $("sc-done").addEventListener("click", () => setActive(false));
@@ -1741,8 +1745,9 @@ const scratch = (() => {
     $("scratch-bar").hidden = !on;
     $("scratch-toggle").hidden = on || !visible;
     if (on) {
+      setScrollMode(false);
       size();
-      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll"); store.set("amc8q.scratchHint", true); }
+      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll · ✋ for scroll mode"); store.set("amc8q.scratchHint", true); }
     } else { pointers.clear(); cur = null; ctxL.clearRect(0, 0, cL.width, cL.height); }
   }
   function setVisible(v) {
