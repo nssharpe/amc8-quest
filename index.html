@@ -1047,8 +1047,9 @@ function renderMission(p) {
   $("mission-open").style.display = "block";
   if (used >= goal) {
     $("mission-title").textContent = "🌟 Mission complete!";
-    $("mission-sub").textContent =
-      `You hit your daily goal${used > goal ? ` (${used} problems!)` : ""} — bonus problems are pure extra XP 🎁`;
+    $("mission-sub").textContent = used > goal
+      ? `${used} problems done today (daily goal: ${goal}) — bonus rounds are pure extra XP 🎁`
+      : `Daily goal of ${goal} done — bonus rounds are pure extra XP 🎁`;
   } else {
     $("mission-title").textContent = "🎯 Today's Mission";
     $("mission-sub").textContent =
