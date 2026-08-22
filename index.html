@@ -382,6 +382,36 @@
 
   .soundbtn { position: fixed; top: .7rem; right: .7rem; z-index: 60; background: var(--card); border: 2px solid var(--line); border-radius: 12px; font-size: 1.1rem; padding: .3rem .55rem; cursor: pointer; }
 
+  /* ================= SCRATCHPAD ================= */
+  .scratch-layer { position: absolute; top: 0; left: 0; z-index: 40; pointer-events: none; touch-action: none; }
+  #scratch-live.on { pointer-events: auto; cursor: crosshair; }
+  body.scratching { overscroll-behavior: none; user-select: none; -webkit-user-select: none; }
+  .scratch-toggle {
+    position: fixed; bottom: 1rem; right: 1rem; z-index: 45;
+    font-family: "Fredoka", sans-serif; font-weight: 600; font-size: 1rem;
+    background: var(--violet); color: #1a0f33; border: none; border-radius: 999px;
+    padding: .6rem 1.1rem; box-shadow: 0 5px 0 #6b4fb3; cursor: pointer;
+  }
+  .scratch-toggle:active { transform: translateY(4px); box-shadow: 0 1px 0 #6b4fb3; }
+  .scratch-bar {
+    position: fixed; bottom: .8rem; left: 50%; transform: translateX(-50%); z-index: 46;
+    display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; justify-content: center;
+    background: var(--card); border: 2px solid var(--line); border-radius: 999px;
+    padding: .45rem .7rem; max-width: calc(100vw - 1.2rem);
+    box-shadow: 0 8px 24px rgba(0,0,0,.55);
+  }
+  .scratch-bar .swatch {
+    width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--line); cursor: pointer; padding: 0;
+  }
+  .scratch-bar .swatch.sel { border-color: var(--gold); transform: scale(1.12); }
+  .scratch-bar .tool {
+    font: inherit; font-size: 1.05rem; background: var(--card-2); color: var(--text);
+    border: 2px solid var(--line); border-radius: 10px; padding: .25rem .55rem; cursor: pointer;
+  }
+  .scratch-bar .tool.sel { border-color: var(--gold); background: #37310f; }
+  .scratch-bar .tool.done { font-family: "Fredoka", sans-serif; font-weight: 600; background: var(--mint); color: var(--mint-ink); border-color: var(--mint); }
+  .scratch-hint { color: var(--text-dim); font-size: .78rem; font-weight: 800; text-align: center; margin-top: .6rem; }
+
   @media (max-width: 560px) {
     .ansbtn { width: 58px; height: 58px; font-size: 1.4rem; }
     .pet-bubble { width: 76px; height: 76px; font-size: 2.7rem; }
@@ -466,6 +496,7 @@
       <button class="btn ghost" id="btn-giveup">I give up 😵</button>
     </div>
     <p class="attribution">Problem © MAA · loaded live from the <a href="https://artofproblemsolving.com/wiki/" target="_blank" rel="noopener">AoPS Wiki</a></p>
+    <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll.</p>
   </div>
 
 </div>
@@ -563,6 +594,18 @@
 </div>
 
 <div id="toasts"></div>
+
+<!-- ============ SCRATCHPAD (problem screen only) ============ -->
+<canvas id="scratch-canvas" class="scratch-layer" hidden></canvas>
+<canvas id="scratch-live" class="scratch-layer" hidden></canvas>
+<button class="scratch-toggle" id="scratch-toggle" hidden>✏️ Scratch</button>
+<div class="scratch-bar" id="scratch-bar" hidden>
+  <span id="scratch-colors" style="display:flex;gap:.35rem"></span>
+  <button class="tool" id="sc-eraser" title="Eraser">🧽</button>
+  <button class="tool" id="sc-undo" title="Undo">↶</button>
+  <button class="tool" id="sc-clear" title="Clear all">🗑️</button>
+  <button class="tool done" id="sc-done">Done ✅</button>
+</div>
 
 <script>
 "use strict";
@@ -972,6 +1015,7 @@ function show(screen) {
   document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
   $(screen).classList.add("active");
   window.scrollTo(0, 0);
+  scratch.setVisible(screen === "screen-problem");
 }
 function openModal(id) { $(id).classList.add("open"); }
 function closeModal(id) { $(id).classList.remove("open"); }
@@ -1194,6 +1238,7 @@ async function startProblem(resume) {
   $("p-num").textContent = a.n;
   problemLoaded = false;
   renderAnswerButtons();
+  scratch.reset();
   show("screen-problem");
   startTimer();
   await loadProblemBody(a.y, a.n);
@@ -1536,6 +1581,173 @@ $("set-ok").addEventListener("click", () => {
     });
     box.appendChild(btn);
   }
+})();
+
+/* ==================== SCRATCHPAD ==================== */
+// Full-page drawing overlay for the problem screen. Every stroke is drawn with a
+// contrasting halo so it reads on the white card, the navy background, and the
+// colored buttons alike. One finger/pen draws, two fingers scroll, palms are
+// ignored while a stylus is in use. Drawings stay visible after leaving scratch
+// mode (so they can see their work while answering) and reset per problem.
+const scratch = (() => {
+  const cC = $("scratch-canvas"), cL = $("scratch-live");
+  const ctxC = cC.getContext("2d"), ctxL = cL.getContext("2d");
+  const COLORS = [
+    { c: "#ff3b30", h: "#ffffff" }, // red-orange — default, pops on white / navy / mint
+    { c: "#2979ff", h: "#ffffff" },
+    { c: "#111111", h: "#ffffff" },
+    { c: "#ffffff", h: "#111111" },
+    { c: "#ffd21f", h: "#111111" },
+  ];
+  let active = false, visible = false, tool = "pen", color = COLORS[0];
+  let strokes = [], cur = null, dpr = 1;
+  const pointers = new Map();
+  let lastPenTime = 0, scrollAnchor = null;
+
+  function size() {
+    const w = document.documentElement.clientWidth;
+    const h = Math.max(document.documentElement.scrollHeight, window.innerHeight);
+    dpr = window.devicePixelRatio || 1;
+    for (const c of [cC, cL]) {
+      c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
+      c.style.width = w + "px"; c.style.height = h + "px";
+    }
+    redraw();
+  }
+  function path(ctx, s, w) {
+    const p = s.pts;
+    ctx.lineWidth = w * dpr;
+    ctx.beginPath();
+    if (p.length === 1) {
+      ctx.arc(p[0].x * dpr, p[0].y * dpr, w * dpr / 2, 0, Math.PI * 2);
+      ctx.fillStyle = ctx.strokeStyle; ctx.fill();
+      return;
+    }
+    ctx.moveTo(p[0].x * dpr, p[0].y * dpr);
+    for (let i = 1; i < p.length; i++) ctx.lineTo(p[i].x * dpr, p[i].y * dpr);
+    ctx.stroke();
+  }
+  function drawStroke(ctx, s) {
+    if (!s.pts.length) return;
+    ctx.save();
+    ctx.lineCap = "round"; ctx.lineJoin = "round";
+    if (s.tool === "erase") {
+      ctx.globalCompositeOperation = "destination-out";
+      ctx.strokeStyle = "#000";
+      path(ctx, s, s.w * 4);
+    } else {
+      ctx.strokeStyle = s.halo; path(ctx, s, s.w + 3);
+      ctx.strokeStyle = s.color; path(ctx, s, s.w);
+    }
+    ctx.restore();
+  }
+  function redraw() {
+    ctxC.clearRect(0, 0, cC.width, cC.height);
+    for (const s of strokes) drawStroke(ctxC, s);
+  }
+  const pt = e => ({ x: e.pageX, y: e.pageY });
+
+  function down(e) {
+    if (e.pointerType === "pen") lastPenTime = Date.now();
+    else if (e.pointerType === "touch" && Date.now() - lastPenTime < 800) return; // palm
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, type: e.pointerType });
+    const touches = [...pointers.values()].filter(p => p.type === "touch");
+    if (touches.length >= 2) { // second finger: stop drawing, start scrolling
+      if (cur) { cur = null; ctxL.clearRect(0, 0, cL.width, cL.height); }
+      scrollAnchor = (touches[0].y + touches[1].y) / 2;
+      return;
+    }
+    try { cL.setPointerCapture(e.pointerId); } catch {}
+    const base = tool === "erase" ? 6 : 4;
+    const w = e.pointerType === "pen" && e.pressure > 0 ? base * (0.5 + e.pressure) : base;
+    cur = { id: e.pointerId, tool, color: color.c, halo: color.h, w, pts: [pt(e)] };
+    if (tool === "erase") drawStroke(ctxC, cur); else drawStroke(ctxL, cur);
+    e.preventDefault();
+  }
+  function move(e) {
+    const rec = pointers.get(e.pointerId);
+    if (rec) { rec.x = e.clientX; rec.y = e.clientY; }
+    const touches = [...pointers.values()].filter(p => p.type === "touch");
+    if (touches.length >= 2 && scrollAnchor !== null) {
+      const mid = (touches[0].y + touches[1].y) / 2;
+      window.scrollBy(0, scrollAnchor - mid);
+      scrollAnchor = mid;
+      return;
+    }
+    if (!cur || e.pointerId !== cur.id) return;
+    let evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [];
+    if (!evs.length) evs = [e];
+    for (const ce of evs) cur.pts.push(pt(ce));
+    if (cur.tool === "erase") {
+      const tail = { ...cur, pts: cur.pts.slice(-Math.min(cur.pts.length, evs.length + 1)) };
+      drawStroke(ctxC, tail);
+    } else {
+      ctxL.clearRect(0, 0, cL.width, cL.height);
+      drawStroke(ctxL, cur);
+    }
+    e.preventDefault();
+  }
+  function up(e) {
+    pointers.delete(e.pointerId);
+    if ([...pointers.values()].filter(p => p.type === "touch").length < 2) scrollAnchor = null;
+    if (!cur || e.pointerId !== cur.id) return;
+    strokes.push(cur);
+    if (cur.tool !== "erase") { drawStroke(ctxC, cur); ctxL.clearRect(0, 0, cL.width, cL.height); }
+    cur = null;
+  }
+  cL.addEventListener("pointerdown", down);
+  cL.addEventListener("pointermove", move);
+  cL.addEventListener("pointerup", up);
+  cL.addEventListener("pointercancel", up);
+  cL.addEventListener("contextmenu", e => e.preventDefault());
+
+  // toolbar
+  const swatches = $("scratch-colors");
+  COLORS.forEach((col, i) => {
+    const b = document.createElement("button");
+    b.className = "swatch" + (i === 0 ? " sel" : "");
+    b.style.background = col.c;
+    b.title = "Pen color";
+    b.addEventListener("click", () => {
+      color = col; tool = "pen";
+      swatches.querySelectorAll(".swatch").forEach(s => s.classList.remove("sel"));
+      b.classList.add("sel");
+      $("sc-eraser").classList.remove("sel");
+    });
+    swatches.appendChild(b);
+  });
+  $("sc-eraser").addEventListener("click", () => {
+    tool = tool === "erase" ? "pen" : "erase";
+    $("sc-eraser").classList.toggle("sel", tool === "erase");
+  });
+  $("sc-undo").addEventListener("click", () => { strokes.pop(); redraw(); });
+  $("sc-clear").addEventListener("click", () => { strokes = []; redraw(); });
+  $("sc-done").addEventListener("click", () => setActive(false));
+  $("scratch-toggle").addEventListener("click", () => { sndClick(); setActive(true); });
+
+  function setActive(on) {
+    active = on;
+    cL.classList.toggle("on", on);
+    document.body.classList.toggle("scratching", on);
+    $("scratch-bar").hidden = !on;
+    $("scratch-toggle").hidden = on || !visible;
+    if (on) {
+      size();
+      if (!store.get("amc8q.scratchHint", false)) { toast("✏️", "1 finger draws · 2 fingers scroll"); store.set("amc8q.scratchHint", true); }
+    } else { pointers.clear(); cur = null; ctxL.clearRect(0, 0, cL.width, cL.height); }
+  }
+  function setVisible(v) {
+    visible = v;
+    cC.hidden = cL.hidden = !v;
+    if (!v) setActive(false);
+    $("scratch-toggle").hidden = !v;
+    if (v) size();
+  }
+  function reset() { strokes = []; cur = null; tool = "pen"; $("sc-eraser").classList.remove("sel"); redraw(); ctxL.clearRect(0, 0, cL.width, cL.height); }
+
+  window.addEventListener("resize", () => { if (visible) size(); });
+  if (window.ResizeObserver) new ResizeObserver(() => { if (visible) size(); }).observe(document.body);
+  return { setVisible, reset };
 })();
 
 /* ---------- wire up ---------- */
