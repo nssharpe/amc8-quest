@@ -394,11 +394,11 @@
   }
   .scratch-toggle:active { transform: translateY(4px); box-shadow: 0 1px 0 #6b4fb3; }
   .scratch-bar {
-    position: fixed; bottom: .8rem; left: 50%; transform: translateX(-50%); z-index: 46;
-    display: flex; align-items: center; gap: .45rem; flex-wrap: wrap; justify-content: center;
-    background: var(--card); border: 2px solid var(--line); border-radius: 999px;
-    padding: .45rem .7rem; max-width: calc(100vw - 1.2rem);
-    box-shadow: 0 8px 24px rgba(0,0,0,.55);
+    position: fixed; right: .6rem; bottom: 1rem; z-index: 46;
+    display: flex; flex-direction: column; flex-wrap: wrap-reverse; align-content: flex-end;
+    gap: .4rem; max-height: calc(100vh - 2rem);
+    background: var(--card); border: 2px solid var(--line); border-radius: 22px;
+    padding: .5rem .45rem; box-shadow: 0 8px 24px rgba(0,0,0,.55);
   }
   .scratch-bar[hidden], .scratch-toggle[hidden], .scratch-layer[hidden] { display: none; }
   .scratch-bar .swatch {
@@ -410,7 +410,8 @@
     border: 2px solid var(--line); border-radius: 10px; padding: .25rem .55rem; cursor: pointer;
   }
   .scratch-bar .tool.sel { border-color: var(--gold); background: #37310f; }
-  .scratch-bar .tool.done { font-family: "Fredoka", sans-serif; font-weight: 600; background: var(--mint); color: var(--mint-ink); border-color: var(--mint); }
+  .scratch-bar .tool.done { font-family: "Fredoka", sans-serif; font-weight: 600; background: var(--mint); color: var(--mint-ink); border-color: var(--mint); margin-top: .2rem; }
+  .scratch-space { min-height: 100vh; margin-top: 1.5rem; border-top: 2px dashed var(--line); padding-top: .6rem; text-align: center; color: var(--text-dim); font-size: .8rem; font-weight: 800; }
   .scratch-hint { color: var(--text-dim); font-size: .78rem; font-weight: 800; text-align: center; margin-top: .6rem; }
 
   @media (max-width: 560px) {
@@ -498,6 +499,7 @@
     </div>
     <p class="attribution">Problem © MAA · loaded live from the <a href="https://artofproblemsolving.com/wiki/" target="_blank" rel="noopener">AoPS Wiki</a></p>
     <p class="scratch-hint">✏️ Need to work it out? Tap <b>Scratch</b> to draw anywhere on the screen — 1 finger draws, 2 fingers scroll.</p>
+    <div class="scratch-space">✏️ scratch space — scroll down for room to draw</div>
   </div>
 
 </div>
@@ -601,11 +603,11 @@
 <canvas id="scratch-live" class="scratch-layer" hidden></canvas>
 <button class="scratch-toggle" id="scratch-toggle" hidden>✏️ Scratch</button>
 <div class="scratch-bar" id="scratch-bar" hidden>
-  <span id="scratch-colors" style="display:flex;gap:.35rem"></span>
+  <span id="scratch-colors" style="display:flex;flex-direction:column;gap:.35rem;align-items:center"></span>
   <button class="tool" id="sc-eraser" title="Eraser">🧽</button>
   <button class="tool" id="sc-undo" title="Undo">↶</button>
   <button class="tool" id="sc-clear" title="Clear all">🗑️</button>
-  <button class="tool done" id="sc-done">Done ✅</button>
+  <button class="tool done" id="sc-done" title="Done drawing">✅</button>
 </div>
 
 <script>
@@ -1605,10 +1607,15 @@ const scratch = (() => {
   const pointers = new Map();
   let lastPenTime = 0, scrollAnchor = null;
 
+  let sizePending = false;
   function size() {
+    if (pointers.size) { sizePending = true; return; } // never resize mid-gesture (iOS address-bar collapse fires resizes while scrolling)
+    sizePending = false;
     const w = document.documentElement.clientWidth;
-    const h = Math.max(document.documentElement.scrollHeight, window.innerHeight);
-    dpr = window.devicePixelRatio || 1;
+    const h = document.documentElement.scrollHeight;
+    const d = window.devicePixelRatio || 1;
+    if (w === cC.clientWidth && h === cC.clientHeight && d === dpr) return; // unchanged: don't wipe + redraw
+    dpr = d;
     for (const c of [cC, cL]) {
       c.width = Math.round(w * dpr); c.height = Math.round(h * dpr);
       c.style.width = w + "px"; c.style.height = h + "px";
@@ -1646,7 +1653,7 @@ const scratch = (() => {
     ctxC.clearRect(0, 0, cC.width, cC.height);
     for (const s of strokes) drawStroke(ctxC, s);
   }
-  const pt = e => ({ x: e.pageX, y: e.pageY });
+  const pt = e => ({ x: e.clientX + window.scrollX, y: e.clientY + window.scrollY });
 
   function down(e) {
     if (e.pointerType === "pen") lastPenTime = Date.now();
@@ -1690,6 +1697,7 @@ const scratch = (() => {
   }
   function up(e) {
     pointers.delete(e.pointerId);
+    if (!pointers.size && sizePending) setTimeout(size, 50);
     if ([...pointers.values()].filter(p => p.type === "touch").length < 2) scrollAnchor = null;
     if (!cur || e.pointerId !== cur.id) return;
     strokes.push(cur);
