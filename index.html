@@ -355,6 +355,7 @@
   .pw-err.good { color: var(--mint); }
   /* problem-image fallbacks (inside the white paper card) */
   .paper .tex-fallback { font-family: ui-monospace, Consolas, monospace; background: #fff3c4; color: #4a3b00; padding: 0 .3em; border-radius: 4px; }
+  .paper .paper-note { color: #666; font-size: .8rem; font-weight: 700; margin-top: .8rem; }
   .paper .img-missing { display: inline-block; color: #a33; font-weight: 800; font-size: .9rem; }
   .paper-banner {
     background: #fff3c4; color: #4a3b00; border: 2px solid #e0c252; border-radius: 12px;
@@ -1302,6 +1303,25 @@ function hasChoices(frag) {
   return /\(\s*A\s*\)/.test(s) || graphical;
 }
 
+// Known typos in the wiki's problem statements, verified against the official
+// problems. Applied to the text after extraction; keyed "year-number".
+const CORRECTIONS = {
+  "1987-20": [{ find: 'is prime." A value of', replace: 'is not prime." A value of' }],
+};
+function applyCorrections(frag, y, n) {
+  const fixes = CORRECTIONS[y + "-" + n];
+  if (!fixes) return false;
+  const walker = document.createTreeWalker(frag, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  let applied = false;
+  for (const f of fixes) {
+    const t = nodes.find(t => t.nodeValue.includes(f.find));
+    if (t) { t.nodeValue = t.nodeValue.replace(f.find, f.replace); applied = true; }
+  }
+  return applied;
+}
+
 // rough LaTeX -> plain text for the "image didn't load" fallback
 function texToText(tex) {
   return tex
@@ -1363,6 +1383,12 @@ async function loadProblemBody(y, n, attempt = 0) {
     }
     sanitizeProblemNodes(frag);
     if (!frag.textContent.trim() && !frag.querySelector("img")) throw new Error("empty problem");
+    if (applyCorrections(frag, y, n)) {
+      const note = document.createElement("div");
+      note.className = "paper-note";
+      note.textContent = "✎ a typo in the wiki's copy of this problem has been corrected here";
+      frag.appendChild(note);
+    }
     // Don't reveal a half-rendered problem: the numbers, diagrams and answer choices
     // are images. Wait for them (retrying failures), and if any still won't load,
     // show the LaTeX source text instead so information is never silently missing.
