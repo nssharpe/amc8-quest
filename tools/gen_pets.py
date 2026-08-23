@@ -29,6 +29,14 @@ def hx(rgb):
 
 # ---------------- shared bits ----------------
 
+def outline_def(color, radius=2.5):
+    """Nate's white-on-white fix: dilate the union silhouette into a soft outline."""
+    return (f'<filter id="outline" x="-15%" y="-15%" width="130%" height="130%">'
+            f'<feMorphology in="SourceAlpha" operator="dilate" radius="{radius}" result="dil"/>'
+            f'<feFlood flood-color="{color}" result="col"/>'
+            f'<feComposite in="col" in2="dil" operator="in" result="out"/>'
+            f'<feMerge><feMergeNode in="out"/><feMergeNode in="SourceGraphic"/></feMerge></filter>')
+
 def aura_def(inner, outer):
     return (f'<radialGradient id="auraGrad" cx="50%" cy="55%" r="50%">'
             f'<stop offset="0%" stop-color="{inner}" stop-opacity="0.5"/>'
@@ -185,12 +193,13 @@ def unicorn(i):
             y = 92 - 54 * math.sin(a)
             sc.append(f'<circle cx="{x:.0f}" cy="{y:.0f}" r="{13 + (2 if k % 2 else 0)}" fill="{cols[k % len(cols)]}"/>')
         parts.append('<g id="mane">' + "".join(sc) + "</g>")
-    # horn
+    # horn — base sits below the mane scallops; LEGENDARY tip clears the crown
     if i >= 3:
-        hl = {3: 18, 4: 24, 5: 30, 6: 34, 7: 38, 8: 42, 9: 46}[i]
+        hl = {3: 26, 4: 34, 5: 40, 6: 46, 7: 50, 8: 54, 9: 60}[i]
         hcol = CROWN if i >= 7 else "#f2e3b8"
-        parts.append(f'<path id="horn" d="M94,52 L100,{52 - hl} L106,52 Z" fill="{hcol}"/>'
-                     f'<path d="M96,{52 - hl * 0.35:.0f} L104,{52 - hl * 0.55:.0f}" stroke="{CROWN_D}" stroke-width="2" />')
+        parts.append(f'<path id="horn" d="M93,62 L100,{62 - hl} L107,62 Z" fill="{hcol}"/>'
+                     f'<path d="M95,{62 - hl * 0.3:.0f} L105,{62 - hl * 0.5:.0f}" stroke="{CROWN_D}" stroke-width="2"/>'
+                     f'<path d="M94,{62 - hl * 0.55:.0f} L104,{62 - hl * 0.75:.0f}" stroke="{CROWN_D}" stroke-width="2"/>')
     if i >= 8:
         parts.append(f'<g id="marks" fill="{mane}" opacity="0.7"><path d="M58,140 l2.5,5 5,0.7 -3.6,3.6 0.9,5 -4.8,-2.5 -4.8,2.5 0.9,-5 -3.6,-3.6 5,-0.7 Z"/>'
                      f'<path d="M142,138 l2.5,5 5,0.7 -3.6,3.6 0.9,5 -4.8,-2.5 -4.8,2.5 0.9,-5 -3.6,-3.6 5,-0.7 Z"/></g>')
@@ -259,6 +268,8 @@ def cat(i):
     parts.append(f'<ellipse id="footR" cx="124" cy="187" rx="15" ry="10" fill="{body}"/>')
     parts.append(f'<ellipse id="body" cx="100" cy="150" rx="44" ry="38" fill="{body}"/>')
     parts.append(f'<ellipse id="belly" cx="100" cy="158" rx="27" ry="25" fill="#f6ecc3"/>')
+    parts.append(f'<ellipse id="armL" cx="63" cy="146" rx="10" ry="15" transform="rotate(18 63 146)" fill="{stripe}"/>')
+    parts.append(f'<ellipse id="armR" cx="137" cy="146" rx="10" ry="15" transform="rotate(-18 137 146)" fill="{stripe}"/>')
     # lion mane behind head at 8+
     if i >= 8:
         spikes_ = []
@@ -281,8 +292,9 @@ def cat(i):
     # muzzle
     parts.append(f'<ellipse id="muzzle" cx="100" cy="116" rx="24" ry="16" fill="#fdf6e4"/>')
     parts.append(f'<path id="nose" d="M95,108 L105,108 L100,115 Z" fill="{BLUSH}"/>')
-    parts.append(f'<path id="mouth" d="M100,115 Q100,121 94,123 M100,115 Q100,121 106,123" fill="none" stroke="{DARK}" stroke-width="3" stroke-linecap="round"/>')
-    parts.append(fangs(i, base_y=124))
+    parts.append(f'<path id="philtrum" d="M100,115 L100,119" fill="none" stroke="{DARK}" stroke-width="2.6" stroke-linecap="round"/>')
+    parts.append(f'<path id="mouth" d="M89,119 Q100,128 111,119" fill="none" stroke="{DARK}" stroke-width="3" stroke-linecap="round"/>')
+    parts.append(fangs(i, base_y=124.5))
     # whiskers
     if i >= 3:
         parts.append(f'<g id="whiskers" stroke="{DARK}" stroke-width="2" stroke-linecap="round" opacity="0.75">'
@@ -313,6 +325,8 @@ def fox(i):
     parts.append(f'<ellipse id="footR" cx="124" cy="187" rx="15" ry="10" fill="{dark}"/>')
     parts.append(f'<ellipse id="body" cx="100" cy="150" rx="44" ry="38" fill="{body}"/>')
     parts.append(f'<ellipse id="belly" cx="100" cy="158" rx="27" ry="25" fill="#fff4e4"/>')
+    parts.append(f'<ellipse id="armL" cx="63" cy="146" rx="10" ry="15" transform="rotate(18 63 146)" fill="{dark}"/>')
+    parts.append(f'<ellipse id="armR" cx="137" cy="146" rx="10" ry="15" transform="rotate(-18 137 146)" fill="{dark}"/>')
     # big pointy ears w/ dark tips
     tip = CROWN if i >= 9 else dark
     parts.append(f'<path id="earL" d="M58,70 L48,20 L92,44 Z" fill="{body}"/><path d="M55,52 L48,20 L68,31 Z" fill="{tip}"/>')
@@ -325,8 +339,9 @@ def fox(i):
     # white muzzle patch
     parts.append(f'<path id="muzzle" d="M74,110 C74,96 88,92 100,92 C112,92 126,96 126,110 C126,126 112,134 100,134 C88,134 74,126 74,110 Z" fill="#fff4e4"/>')
     parts.append(f'<path id="nose" d="M95,108 L105,108 L100,115 Z" fill="{DARK}"/>')
-    parts.append(f'<path id="mouth" d="M100,115 Q100,121 94,123 M100,115 Q100,121 106,123" fill="none" stroke="{DARK}" stroke-width="3" stroke-linecap="round"/>')
-    parts.append(fangs(i, base_y=124))
+    parts.append(f'<path id="philtrum" d="M100,115 L100,119" fill="none" stroke="{DARK}" stroke-width="2.6" stroke-linecap="round"/>')
+    parts.append(f'<path id="mouth" d="M89,119 Q100,128 111,119" fill="none" stroke="{DARK}" stroke-width="3" stroke-linecap="round"/>')
+    parts.append(fangs(i, base_y=124.5))
     parts.append(eyes(i >= 7))
     parts.append(cheeks(y=106, lx=64, rx=136))
     if i >= 9:
@@ -350,8 +365,8 @@ def shark(i):
     if i >= 3:
         ds = {3: 0.7, 4: 0.85, 5: 1.0, 6: 1.1, 7: 1.15, 8: 1.2, 9: 1.25}[i]
         tipcol = CROWN if i >= 9 else dark
-        parts.append(f'<g id="dorsal" transform="translate(100,64) scale({ds}) translate(-100,-64)">'
-                     f'<path d="M84,66 C82,44 90,28 104,20 C102,34 106,48 116,58 Z" fill="{tipcol}"/></g>')
+        parts.append(f'<g id="dorsal" transform="translate(100,84) scale({ds}) translate(-100,-84)">'
+                     f'<path d="M82,84 C80,50 90,30 106,20 C102,38 108,54 120,66 L114,84 Z" fill="{tipcol}"/></g>')
     # body (one big blob, face on body)
     parts.append(f'<path id="body" d="M42,124 C42,90 68,64 100,64 C132,64 158,90 158,124 C158,152 132,172 100,172 C68,172 42,152 42,124 Z" fill="{body}"/>')
     parts.append(f'<path id="belly" d="M54,138 C64,156 82,166 100,166 C118,166 136,156 146,138 C132,148 116,153 100,153 C84,153 68,148 54,138 Z" fill="#eaf6fb"/>')
@@ -383,46 +398,48 @@ def shark(i):
     return "".join(parts)
 
 def dino(i):
-    body = hx(lerp((108, 200, 168), (58, 154, 120), tone(i)))
-    dark = hx(lerp((70, 160, 130), (40, 120, 92), tone(i)))
-    plate = FLAME_O if i < 8 else FLAME_Y
+    """Triceratops — blue-slate, neck frill, brow + nose horns (distinct from dragon)."""
+    body = hx(lerp((138, 168, 216), (85, 120, 184), tone(i)))
+    dark = hx(lerp((104, 134, 186), (60, 92, 150), tone(i)))
+    frill = hx(lerp((96, 122, 176), (52, 80, 136), tone(i)))
+    scallop = FLAME_Y if i >= 8 else FLAME_O
+    horncol = CROWN if i >= 9 else "#f2e3b8"
     parts = []
-    # tail with plates
-    parts.append(f'<path id="tail" d="M118,166 C150,170 170,158 176,134 C178,122 172,112 164,110 C168,124 160,142 146,150 C136,156 124,158 116,156 Z" fill="{body}"/>')
-    if i >= 4:
-        parts.append(f'<path d="M158,116 L166,100 L172,116 Z" fill="{plate}"/><path d="M144,140 L154,126 L158,142 Z" fill="{plate}"/>')
+    parts.append(f'<path id="tail" d="M118,166 C148,170 168,158 174,136 C176,124 170,114 162,112 C166,126 158,142 144,150 C134,156 124,158 116,156 Z" fill="{body}"/>')
     parts.append(f'<ellipse id="footL" cx="74" cy="186" rx="17" ry="11" fill="{dark}"/>')
     parts.append(f'<ellipse id="footR" cx="126" cy="186" rx="17" ry="11" fill="{dark}"/>')
+    # neck frill behind the head, grows with stage
+    if i >= 3:
+        fs = {3: 0.72, 4: 0.82, 5: 0.9, 6: 1.0, 7: 1.05, 8: 1.08, 9: 1.1}[i]
+        dots = "".join(f'<circle cx="{100 + 57 * math.cos(math.pi * (1 - k / 7)):.0f}" '
+                       f'cy="{86 - 57 * math.sin(math.pi * (1 - k / 7)):.0f}" r="4.5" fill="{scallop}"/>' for k in range(1, 7))
+        parts.append(f'<g id="frill" transform="translate(100,86) scale({fs}) translate(-100,-86)">'
+                     f'<path d="M38,100 A62,62 0 1 1 162,100 L138,110 L62,110 Z" fill="{frill}"/>{dots}</g>')
     parts.append(f'<ellipse id="body" cx="100" cy="150" rx="46" ry="40" fill="{body}"/>')
     parts.append(f'<ellipse id="belly" cx="100" cy="158" rx="29" ry="27" fill="#f2ecc8"/>')
     if i >= 9:  # lava cracks
         parts.append(f'<g id="lava" stroke="{FLAME_O}" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.9">'
                      f'<path d="M62,142 L70,148 L66,156"/><path d="M138,140 L131,148 L136,156"/></g>')
-    # tiny arms
     parts.append(f'<ellipse id="armL" cx="64" cy="146" rx="9" ry="13" transform="rotate(22 64 146)" fill="{dark}"/>')
     parts.append(f'<ellipse id="armR" cx="136" cy="146" rx="9" ry="13" transform="rotate(-22 136 146)" fill="{dark}"/>')
-    # back plates on head/back
-    if i >= 3:
-        n = {3: 2, 4: 3, 5: 3, 6: 5, 7: 5, 8: 5, 9: 5}[i]
-        xs = [76, 100, 124] if n <= 3 else [64, 82, 100, 118, 136]
-        pl = []
-        for x in xs[:n]:
-            h = 18 if x == 100 else 13
-            pl.append(f'<path d="M{x - 10},48 C{x - 5},{42 - h} {x + 5},{42 - h} {x + 10},48 L{x + 6},56 L{x - 6},56 Z" fill="{plate}"/>')
-        parts.append('<g id="plates">' + "".join(pl) + "</g>")
-    parts.append(f'<circle id="head" cx="100" cy="92" r="52" fill="{body}"/>')
-    # snout
-    parts.append(f'<ellipse id="muzzle" cx="100" cy="116" rx="30" ry="19" fill="{hx(lerp((150, 224, 194), (96, 186, 152), tone(i) * 0.6))}"/>')
-    parts.append(f'<ellipse cx="90" cy="110" rx="2.8" ry="3.6" fill="{DARK}"/><ellipse cx="110" cy="110" rx="2.8" ry="3.6" fill="{DARK}"/>')
-    parts.append(f'<path id="mouth" d="M84,124 Q100,133 116,124" fill="none" stroke="{DARK}" stroke-width="3.5" stroke-linecap="round"/>')
+    parts.append(f'<circle id="head" cx="100" cy="92" r="50" fill="{body}"/>')
+    # brow horns
+    if i >= 4:
+        hs = {4: 0.7, 5: 0.85, 6: 1.0, 7: 1.1, 8: 1.15, 9: 1.2}[i]
+        parts.append(f'<g id="hornL" transform="translate(74,60) scale({hs}) translate(-74,-60)">'
+                     f'<path d="M64,66 C58,52 60,38 70,30 C76,42 76,56 72,66 Z" fill="{horncol}"/></g>')
+        parts.append(f'<g id="hornR" transform="translate(126,60) scale({hs}) translate(-126,-60)">'
+                     f'<path d="M136,66 C142,52 140,38 130,30 C124,42 124,56 128,66 Z" fill="{horncol}"/></g>')
+    # snout + nose horn
+    parts.append(f'<ellipse id="muzzle" cx="100" cy="116" rx="28" ry="18" fill="{hx(lerp((176, 200, 236), (124, 154, 208), tone(i) * 0.6))}"/>')
     if i >= 5:
-        parts.append(f'<path id="toothR" transform="rotate(-14 111 128)" d="M107,127 L115,127 L111,134 Z" fill="#ffffff"/>')
-    if i >= 7:
-        parts.append(f'<path id="toothL" transform="rotate(14 89 128)" d="M85,127 L93,127 L89,134 Z" fill="#ffffff"/>')
+        parts.append(f'<path id="noseHorn" d="M94,104 C96,93 104,93 106,104 Z" fill="{horncol}"/>')
+    parts.append(f'<ellipse cx="90" cy="112" rx="2.6" ry="3.4" fill="{DARK}"/><ellipse cx="110" cy="112" rx="2.6" ry="3.4" fill="{DARK}"/>')
+    parts.append(f'<path id="mouth" d="M86,124 Q100,132 114,124" fill="none" stroke="{DARK}" stroke-width="3.5" stroke-linecap="round"/>')
     parts.append(eyes(i >= 7))
     parts.append(cheeks())
     if i >= 9:
-        parts.append(crown(30))
+        parts.append(crown(16))
     return "".join(parts)
 
 def penguin(i):
@@ -446,9 +463,10 @@ def penguin(i):
     # face + belly patch
     parts.append(f'<path id="facePatch" d="M100,44 C126,44 140,66 140,92 C140,104 132,112 100,112 C68,112 60,104 60,92 C60,66 74,44 100,44 Z" fill="#f2f7fb"/>')
     parts.append(f'<ellipse id="belly" cx="100" cy="150" rx="34" ry="36" fill="#f2f7fb"/>')
-    # beak
-    parts.append(f'<path id="beak" d="M90,96 L110,96 L100,110 Z" fill="{orange}"/>')
-    parts.append(f'<path id="mouth" d="M93,108 Q100,113 107,108" fill="none" stroke="{DARK}" stroke-width="2.8" stroke-linecap="round"/>')
+    # beak: rounded upper + smaller lower lobe with a smiling seam (per Nate's reference)
+    parts.append(f'<g id="beak"><path d="M86,96 C90,87 110,87 114,96 C112,102 104,105 100,105 C96,105 88,102 86,96 Z" fill="{orange}"/>'
+                 f'<path d="M91,102 C95,108 105,108 109,102 C106,110 94,110 91,102 Z" fill="{orange}"/>'
+                 f'<path d="M87,97 Q100,104 113,97" fill="none" stroke="#c97a14" stroke-width="2" stroke-linecap="round"/></g>')
     if i >= 8:
         parts.append(f'<g id="marks" fill="#cfeeff"><circle cx="70" cy="130" r="3"/><circle cx="130" cy="130" r="3"/></g>')
     parts.append(eyes(i >= 7, lx=82, rx=118, cy=78, s=0.9))
@@ -465,11 +483,11 @@ SPECIES = {
                                 f'<ellipse cx="95" cy="109" rx="1.6" ry="2.2" fill="{DARK}"/><ellipse cx="105" cy="109" rx="1.6" ry="2.2" fill="{DARK}"/>'
                                 f'<path d="M92,117 Q100,123 108,117" fill="none" stroke="{DARK}" stroke-width="2.8" stroke-linecap="round"/>',
                     peek_extra=f'<path d="M95,60 L100,42 L105,60 Z" fill="#f2e3b8"/>',
-                    aura=("#ffd7f5", "#b28bff"), ember="star", ring="star", eye_rim="#ffbf1f"),
+                    aura=("#ffd7f5", "#b28bff"), ember="star", ring="star", eye_rim="#b28bff", outline="#b28bff"),
     "robot": dict(builder=robot, egg="box", peek_body="#b0bcd2",
                   peek_muzzle=f'<path d="M92,112 Q100,118 108,112" fill="none" stroke="{DARK}" stroke-width="2.8" stroke-linecap="round"/>',
                   peek_extra=f'<rect x="97" y="40" width="4" height="16" rx="2" fill="#7c88a0"/><circle cx="99" cy="36" r="5" fill="{BLUSH}"/>',
-                  aura=("#ffd21f", "#ff9f2e"), ember="star", ring="flame", pupils=(84, 120, 84), eye_rim="#ffbf1f"),
+                  aura=("#ffd21f", "#ff9f2e"), ember="star", ring="flame", pupils=(84, 120, 84), eye_rim="#3ddc97"),
     "cat": dict(builder=cat, egg=("#fdf6e4", "#f5c98a"), peek_body="#f5ac6a",
                 peek_muzzle=f'<ellipse cx="100" cy="113" rx="13" ry="8" fill="#fdf6e4"/>'
                             f'<path d="M96,106 L104,106 L100,111 Z" fill="{BLUSH}"/>'
@@ -486,11 +504,11 @@ SPECIES = {
                               f'<path d="M90,116 Q100,123 110,116" fill="none" stroke="{DARK}" stroke-width="2.8" stroke-linecap="round"/>',
                   peek_extra=f'<path d="M92,58 C92,46 96,38 102,34 C101,42 103,50 108,56 Z" fill="#5e88a8"/>',
                   aura=("#9fdcf5", "#4cc9f0"), ember="bubble", ring="bubble", pupils=(82, 122, 104), eye_rim="#4cc9f0"),
-    "dino": dict(builder=dino, egg=("#eef4de", "#b7a27c"), peek_body="#6cc8a8",
-                 peek_muzzle=f'<ellipse cx="100" cy="112" rx="16" ry="10" fill="#96e0c2"/>'
-                             f'<ellipse cx="94" cy="108" rx="1.8" ry="2.4" fill="{DARK}"/><ellipse cx="106" cy="108" rx="1.8" ry="2.4" fill="{DARK}"/>'
-                             f'<path d="M92,117 Q100,123 108,117" fill="none" stroke="{DARK}" stroke-width="2.8" stroke-linecap="round"/>',
-                 peek_extra=f'<path d="M88,54 C91,44 97,44 100,52 Z" fill="{FLAME_O}"/><path d="M104,52 C107,42 113,42 116,50 Z" fill="{FLAME_O}"/>',
+    "dino": dict(builder=dino, egg=("#eaf0fa", "#9ab4dc"), peek_body="#8aa8d8",
+                 peek_muzzle='<ellipse cx="100" cy="112" rx="16" ry="10" fill="#b0c8ec"/>'
+                             '<ellipse cx="94" cy="108" rx="1.8" ry="2.4" fill="' + DARK + '"/><ellipse cx="106" cy="108" rx="1.8" ry="2.4" fill="' + DARK + '"/>'
+                             '<path d="M92,117 Q100,123 108,117" fill="none" stroke="' + DARK + '" stroke-width="2.8" stroke-linecap="round"/>',
+                 peek_extra='<path d="M96,62 C97,53 103,53 104,62 Z" fill="#f2e3b8"/>',
                  aura=("#ffd21f", "#ff9f2e"), ember="flame", ring="flame", eye_rim="#ffbf1f"),
     "penguin": dict(builder=penguin, egg=("#f4fafe", "#bfe1f5"), peek_body="#9aa4b8",
                     peek_muzzle=f'<path d="M93,104 L107,104 L100,114 Z" fill="#ff9f2e"/>',
@@ -528,13 +546,18 @@ for pet, cfg in SPECIES.items():
     names = ["Egg", "Hatchling", "Kid", "Scrapper", "Champion", "Hero", "Mega", "Ultra", "Mythic", "LEGENDARY"]
     for i in range(10):
         title = f"{pet.capitalize()} — stage {i}: {names[i]}"
+        oc = cfg.get("outline")
         if i == 0:
-            svg = wrap(s0, title)
+            inner0 = f'<defs>{outline_def(oc)}</defs><g filter="url(#outline)">{s0}</g>' if oc else s0
+            svg = wrap(inner0, title)
         elif i == 1:
-            svg = wrap(s1, title)
+            inner1 = f'<defs>{outline_def(oc)}</defs><g filter="url(#outline)">{s1}</g>' if oc else s1
+            svg = wrap(inner1, title)
         else:
             inner = []
             defs = ""
+            if oc:
+                defs += outline_def(oc)
             if i >= 7:
                 defs += aura_def(*cfg["aura"]) + eye_grad_defs(cfg["eye_rim"], *cfg.get("pupils", (80, 124, 86)))
                 inner.append(aura_circle())
@@ -543,7 +566,8 @@ for pet, cfg in SPECIES.items():
             if i == 9:
                 inner.append(ring(cfg["ring"]))
             body = cfg["builder"](i)
-            inner.append(f'<g id="pet" transform="translate(100,196) scale({SCALES[i]}) translate(-100,-196)">{body}</g>')
+            filt = ' filter="url(#outline)"' if oc else ""
+            inner.append(f'<g id="pet"{filt} transform="translate(100,196) scale({SCALES[i]}) translate(-100,-196)">{body}</g>')
             if i >= 8:
                 inner.append(embers(cfg["ember"]))
             svg = wrap("\n  ".join(inner), title)
