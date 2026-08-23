@@ -437,13 +437,14 @@ def dino(i):
     parts.append(f'<ellipse id="armL" cx="64" cy="146" rx="9" ry="13" transform="rotate(22 64 146)" fill="{dark}"/>')
     parts.append(f'<ellipse id="armR" cx="136" cy="146" rx="9" ry="13" transform="rotate(-22 136 146)" fill="{dark}"/>')
     parts.append(f'<circle id="head" cx="100" cy="92" r="50" fill="{body}"/>')
-    # stubby curved brow horns on the head, cream with rounded tips
+    # brow horns — Nate's stage-9 design (rooted at the outer brow, sweeping
+    # up-and-outward to sharp tips), scaled for earlier stages about the roots
     if i >= 4:
-        hs = {4: 0.7, 5: 0.85, 6: 1.0, 7: 1.1, 8: 1.15, 9: 1.2}[i]
-        parts.append(f'<g id="hornL" transform="translate(76,52) scale({hs}) translate(-76,-52)">'
-                     f'<path d="M68,60 C64,44 68,30 78,26 C84,32 82,48 78,60 Z" fill="{horncol}"/></g>')
-        parts.append(f'<g id="hornR" transform="translate(124,52) scale({hs}) translate(-124,-52)">'
-                     f'<path d="M132,60 C136,44 132,30 122,26 C116,32 118,48 122,60 Z" fill="{horncol}"/></g>')
+        hs = {4: 0.7, 5: 0.85, 6: 1.0, 7: 1.1, 8: 1.15, 9: 1.2}[i] / 1.2
+        parts.append(f'<g id="hornL" transform="translate(73,62) scale({hs:.4f}) translate(-73,-62)">'
+                     f'<path d="M67.0,66.0 C63.8,66.8 56.7,39.1 59.9,24.5 C65.6,35.8 83.5,59.5 78.2,61.7 Z" fill="{horncol}"/></g>')
+        parts.append(f'<g id="hornR" transform="translate(127,62) scale({hs:.4f}) translate(-127,-62)">'
+                     f'<path d="M133.0,66.0 C136.2,66.8 143.3,39.1 140.1,24.5 C134.4,35.8 116.5,59.5 121.8,61.7 Z" fill="{horncol}"/></g>')
     # snout + nose horn
     parts.append(f'<ellipse id="muzzle" cx="100" cy="116" rx="28" ry="18" fill="{hx(lerp((176, 200, 236), (124, 154, 208), tone(i) * 0.6))}"/>')
     if i >= 5:
