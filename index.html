@@ -445,6 +445,7 @@
         <h1 id="d-name">—</h1>
         <div class="lvl-line">Level <span id="d-level">1</span> · <span class="ltitle" id="d-title">—</span></div>
         <div class="petstage" id="d-petstage"></div>
+        <button class="btn ghost" id="btn-changepet" style="padding:0;font-size:.82rem" hidden>🔄 change buddy · 50 XP</button>
         <div class="xpbar"><div class="fill" id="d-xpfill" style="width:0%"></div></div>
         <div class="xptext" id="d-xptext"></div>
       </div>
@@ -535,9 +536,10 @@
   <div class="modal">
     <div class="bigemoji">🥚</div>
     <h2>Choose your quest buddy!</h2>
-    <div class="detail">It hatches and evolves as you level up.</div>
+    <div class="detail" id="pet-sub">It hatches and evolves as you level up.</div>
     <div class="petpick" id="petpick"></div>
-    <div class="btnrow"><button class="btn gold" id="pet-ok" disabled>This one! 💛</button></div>
+    <div class="pw-err" id="pet-msg"></div>
+    <div class="btnrow"><button class="btn" id="pet-cancel" hidden>Never mind</button><button class="btn gold" id="pet-ok" disabled>This one! 💛</button></div>
   </div>
 </div>
 
@@ -703,7 +705,7 @@ function levelFromXp(xp) {
   return { lvl, into: xp - spent, need: xpCost(lvl) };
 }
 const speedParSec = n => 30 + 6 * n;
-const SPEED_BONUS = 15, XP_TRY = 5;
+const SPEED_BONUS = 15, XP_TRY = 5, PET_CHANGE_COST = 50;
 const xpFor = r => (r.ok ? 20 + 4 * r.n + (r.t < speedParSec(r.n) ? SPEED_BONUS : 0) : XP_TRY);
 
 const PETS = {
@@ -772,6 +774,9 @@ function validEvent(ev) {
     case "pet": return i.pet in PETS;
     case "reset": return true;
     case "daily": return Number.isInteger(i.daily) && i.daily >= 1 && i.daily <= 20;
+    case "spend": // XP spent on extras (e.g. changing pets)
+      return Number.isInteger(i.amount) && i.amount >= 1 && i.amount <= 10000 &&
+        typeof i.what === "string" && i.what.length <= 32 && typeof i.d === "string" && DATE_RE.test(i.d);
     case "void": // un-count a player's attempts at one problem (e.g. it rendered broken)
       return ANSWERS[i.y] !== undefined && Number.isInteger(i.n) && i.n >= 1 && i.n <= 25 &&
         typeof i.ts === "number" && typeof i.d === "string" && DATE_RE.test(i.d);
@@ -873,7 +878,8 @@ function foldKid(kid) {
       records.push(r);
     }
   }
-  const xp = records.reduce((s, r) => s + r.xp, 0);
+  const spent = active_.filter(e => e.type === "spend").reduce((sum, e) => sum + e.info.amount, 0);
+  const xp = Math.max(0, records.reduce((s, r) => s + r.xp, 0) - spent);
   return { pet, records, xp, badges: computeBadges(records) };
 }
 
@@ -1070,17 +1076,25 @@ function enterKid(id) {
   document.documentElement.style.setProperty("--kid", KIDS[id].color);
   syncNow().then(() => { if (currentKid === id && $("screen-dash").classList.contains("active")) renderDash(); });
   const p = foldKid(id);
-  if (!p.pet) { showPetPicker(); return; }
+  if (!p.pet) { showPetPicker("first"); return; }
   renderDash();
   show("screen-dash");
 }
 
 /* ---------- pet picker ---------- */
-function showPetPicker() {
+let petPickMode = "first";
+function showPetPicker(mode) {
+  petPickMode = mode || "first";
   pendingPetPick = null;
   const box = $("petpick");
   box.innerHTML = "";
   $("pet-ok").disabled = true;
+  $("pet-msg").textContent = "";
+  $("pet-cancel").hidden = petPickMode === "first";
+  $("pet-ok").textContent = petPickMode === "first" ? "This one! 💛" : `Switch! (−${PET_CHANGE_COST} XP)`;
+  $("pet-sub").textContent = petPickMode === "first"
+    ? "It hatches and evolves as you level up."
+    : `Changing buddies costs ${PET_CHANGE_COST} XP. Your trophies and solved problems stay.`;
   for (const key of Object.keys(PETS)) {
     const opt = document.createElement("button");
     opt.type = "button";
@@ -1097,14 +1111,33 @@ function showPetPicker() {
   }
   openModal("ov-pet");
 }
+$("pet-cancel").addEventListener("click", () => closeModal("ov-pet"));
 $("pet-ok").addEventListener("click", () => {
   if (!pendingPetPick) return;
+  if (petPickMode === "change") {
+    const prof = foldKid(currentKid);
+    if (pendingPetPick === prof.pet) { closeModal("ov-pet"); return; }
+    if (prof.xp < PET_CHANGE_COST) {
+      $("pet-msg").textContent = `You need ${PET_CHANGE_COST} XP to change buddies — solve a problem first!`;
+      return;
+    }
+    const oldLvl = levelFromXp(prof.xp).lvl, newLvl = levelFromXp(prof.xp - PET_CHANGE_COST).lvl;
+    if (newLvl < oldLvl && !confirm(`Heads up: spending ${PET_CHANGE_COST} XP will drop ${KIDS[currentKid].name} from level ${oldLvl} to ${newLvl} (the pet may step back a stage). Switch anyway?`)) return;
+    sendEvent(currentKid, "spend", { amount: PET_CHANGE_COST, what: "pet-change", d: todayStr(), ts: Date.now() });
+    sendEvent(currentKid, "pet", { pet: pendingPetPick, d: todayStr() });
+    closeModal("ov-pet");
+    sndBadge();
+    toast("🔄", `Say hello to your new ${PETS[pendingPetPick].label.toLowerCase()}!`);
+    renderDash();
+    return;
+  }
   sendEvent(currentKid, "pet", { pet: pendingPetPick, d: todayStr() });
   closeModal("ov-pet");
   sndBadge();
   renderDash();
   show("screen-dash");
 });
+$("btn-changepet").addEventListener("click", () => { sndClick(); showPetPicker("change"); openModal("ov-pet"); });
 
 /* ---------- dashboard ---------- */
 function renderDash() {
@@ -1116,6 +1149,7 @@ function renderDash() {
   $("d-level").textContent = lvl;
   $("d-title").textContent = LEVEL_TITLES[Math.min(lvl - 1, LEVEL_TITLES.length - 1)];
   $("d-petstage").textContent = p.pet ? PETS[p.pet].label + " · stage: " + STAGE_NAMES[petStage(lvl)] : "";
+  $("btn-changepet").hidden = !p.pet;
   $("d-xpfill").style.width = Math.round(100 * into / need) + "%";
   $("d-xptext").textContent = `${p.xp} XP total · ${into} / ${need} to level ${lvl + 1}`;
 
