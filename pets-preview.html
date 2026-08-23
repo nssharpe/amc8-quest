@@ -40,13 +40,13 @@
     for (let i = 0; i < 10; i++) {
       const cls = i >= 5 ? "cell light" : "cell"; // show later stages on white too? alternate: even rows dark
       g.insertAdjacentHTML("beforeend",
-        `<div class="cell"><img src="assets/pets/${pet}/stage${i}.svg?v=3"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">level ${LEVELS[i]}+</div></div>`);
+        `<div class="cell"><img src="assets/pets/${pet}/stage${i}.svg?v=4"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">level ${LEVELS[i]}+</div></div>`);
     }
     all.appendChild(g);
     const g2 = document.createElement("div"); g2.className = "grid";
     for (let i = 0; i < 10; i++) {
       g2.insertAdjacentHTML("beforeend",
-        `<div class="cell light"><img src="assets/pets/${pet}/stage${i}.svg?v=3"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">on white</div></div>`);
+        `<div class="cell light"><img src="assets/pets/${pet}/stage${i}.svg?v=4"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">on white</div></div>`);
     }
     const det = document.createElement("details");
     det.innerHTML = "<summary style='cursor:pointer;color:#aab0e0;font-weight:800;margin:.4rem 0'>show on white (problem card)</summary>";
@@ -54,7 +54,7 @@
     all.appendChild(det);
     const row = document.createElement("div"); row.className = "row";
     row.innerHTML = `<b style="width:90px;font-family:Fredoka">${pet}</b>` +
-      Array.from({length: 10}, (_, i) => `<img class="sm" src="assets/pets/${pet}/stage${i}.svg?v=3">`).join("");
+      Array.from({length: 10}, (_, i) => `<img class="sm" src="assets/pets/${pet}/stage${i}.svg?v=4">`).join("");
     smalls.appendChild(row);
   }
 </script>

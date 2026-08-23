@@ -408,38 +408,52 @@ def dino(i):
     parts.append(f'<path id="tail" d="M118,166 C148,170 168,158 174,136 C176,124 170,114 162,112 C166,126 158,142 144,150 C134,156 124,158 116,156 Z" fill="{body}"/>')
     parts.append(f'<ellipse id="footL" cx="74" cy="186" rx="17" ry="11" fill="{dark}"/>')
     parts.append(f'<ellipse id="footR" cx="126" cy="186" rx="17" ry="11" fill="{dark}"/>')
-    # neck frill behind the head, grows with stage
+    # neck frill: ring of overlapping petals (scalloped edge), spikes at the
+    # junctions, dots ON the frill face — per Nate's reference art
     if i >= 3:
         fs = {3: 0.72, 4: 0.82, 5: 0.9, 6: 1.0, 7: 1.05, 8: 1.08, 9: 1.1}[i]
-        dots = "".join(f'<circle cx="{100 + 57 * math.cos(math.pi * (1 - k / 7)):.0f}" '
-                       f'cy="{86 - 57 * math.sin(math.pi * (1 - k / 7)):.0f}" r="4.5" fill="{scallop}"/>' for k in range(1, 7))
-        parts.append(f'<g id="frill" transform="translate(100,86) scale({fs}) translate(-100,-86)">'
-                     f'<path d="M38,100 A62,62 0 1 1 162,100 L138,110 L62,110 Z" fill="{frill}"/>{dots}</g>')
+        petals, spikes_, dots = [], [], []
+        for k in range(7):
+            th = math.radians(195 - k * 35)
+            px_, py_ = 100 + 52 * math.cos(th), 90 - 52 * math.sin(th)
+            petals.append(f'<circle cx="{px_:.0f}" cy="{py_:.0f}" r="19" fill="{frill}"/>')
+            if k < 6:
+                tj = math.radians(195 - k * 35 - 17.5)
+                sx_, sy_ = 100 + 63 * math.cos(tj), 90 - 63 * math.sin(tj)
+                rot = 90 - math.degrees(tj)
+                spikes_.append(f'<g transform="translate({sx_:.0f},{sy_:.0f}) rotate({rot:.0f})">'
+                               f'<path d="M-6,2 L0,-13 L6,2 Z" fill="{frill}"/></g>')
+                dx_, dy_ = 100 + 58 * math.cos(tj), 90 - 58 * math.sin(tj)
+                dots.append(f'<circle cx="{dx_:.0f}" cy="{dy_:.0f}" r="4" fill="{scallop}"/>')
+        parts.append(f'<g id="frill" transform="translate(100,90) scale({fs}) translate(-100,-90)">'
+                     + "".join(spikes_) + "".join(petals) + "".join(dots) + '</g>')
     parts.append(f'<ellipse id="body" cx="100" cy="150" rx="46" ry="40" fill="{body}"/>')
     parts.append(f'<ellipse id="belly" cx="100" cy="158" rx="29" ry="27" fill="#f2ecc8"/>')
+    parts.append(f'<circle cx="63" cy="144" r="4.5" fill="{dark}" id="bodyDotL"/>'
+                 f'<circle cx="137" cy="144" r="4.5" fill="{dark}" id="bodyDotR"/>')
     if i >= 9:  # lava cracks
         parts.append(f'<g id="lava" stroke="{FLAME_O}" stroke-width="2.5" stroke-linecap="round" fill="none" opacity="0.9">'
                      f'<path d="M62,142 L70,148 L66,156"/><path d="M138,140 L131,148 L136,156"/></g>')
     parts.append(f'<ellipse id="armL" cx="64" cy="146" rx="9" ry="13" transform="rotate(22 64 146)" fill="{dark}"/>')
     parts.append(f'<ellipse id="armR" cx="136" cy="146" rx="9" ry="13" transform="rotate(-22 136 146)" fill="{dark}"/>')
     parts.append(f'<circle id="head" cx="100" cy="92" r="50" fill="{body}"/>')
-    # brow horns
+    # stubby curved brow horns on the head, cream with rounded tips
     if i >= 4:
         hs = {4: 0.7, 5: 0.85, 6: 1.0, 7: 1.1, 8: 1.15, 9: 1.2}[i]
-        parts.append(f'<g id="hornL" transform="translate(74,60) scale({hs}) translate(-74,-60)">'
-                     f'<path d="M64,66 C58,52 60,38 70,30 C76,42 76,56 72,66 Z" fill="{horncol}"/></g>')
-        parts.append(f'<g id="hornR" transform="translate(126,60) scale({hs}) translate(-126,-60)">'
-                     f'<path d="M136,66 C142,52 140,38 130,30 C124,42 124,56 128,66 Z" fill="{horncol}"/></g>')
+        parts.append(f'<g id="hornL" transform="translate(76,52) scale({hs}) translate(-76,-52)">'
+                     f'<path d="M68,60 C64,44 68,30 78,26 C84,32 82,48 78,60 Z" fill="{horncol}"/></g>')
+        parts.append(f'<g id="hornR" transform="translate(124,52) scale({hs}) translate(-124,-52)">'
+                     f'<path d="M132,60 C136,44 132,30 122,26 C116,32 118,48 122,60 Z" fill="{horncol}"/></g>')
     # snout + nose horn
     parts.append(f'<ellipse id="muzzle" cx="100" cy="116" rx="28" ry="18" fill="{hx(lerp((176, 200, 236), (124, 154, 208), tone(i) * 0.6))}"/>')
     if i >= 5:
-        parts.append(f'<path id="noseHorn" d="M94,104 C96,93 104,93 106,104 Z" fill="{horncol}"/>')
+        parts.append(f'<path id="noseHorn" d="M92,106 C92,96 96,90 100,90 C104,90 108,96 108,106 C104,109 96,109 92,106 Z" fill="{horncol}"/>')
     parts.append(f'<ellipse cx="90" cy="112" rx="2.6" ry="3.4" fill="{DARK}"/><ellipse cx="110" cy="112" rx="2.6" ry="3.4" fill="{DARK}"/>')
     parts.append(f'<path id="mouth" d="M86,124 Q100,132 114,124" fill="none" stroke="{DARK}" stroke-width="3.5" stroke-linecap="round"/>')
     parts.append(eyes(i >= 7))
     parts.append(cheeks())
     if i >= 9:
-        parts.append(crown(16))
+        parts.append(crown(22))
     return "".join(parts)
 
 def penguin(i):
