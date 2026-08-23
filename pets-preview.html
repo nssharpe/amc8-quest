@@ -24,26 +24,38 @@
 </style>
 </head>
 <body>
-  <h1>🐉 Dragon evolution — draft 1</h1>
-  <p class="sub">10 stages · proposed unlock levels 1, 3, 6, 10, 15, 21, 28, 36, 45, 55</p>
-  <div class="grid" id="dark"></div>
-  <h2>On white (problem-card background)</h2>
-  <div class="grid" id="light"></div>
+  <h1>🐾 Pet evolutions — draft</h1>
+  <p class="sub">10 stages · unlock levels 1, 3, 6, 10, 15, 21, 28, 36, 45, 55 · dragon includes Nate's tweaks</p>
+  <div id="all"></div>
   <h2>Small sizes (dashboard bubble / player cards)</h2>
-  <div class="row" id="mid"></div>
-  <div class="row" id="small" style="margin-top:.6rem"></div>
+  <div id="smalls"></div>
 <script>
+  const PETS = ["dragon","unicorn","robot","cat","fox","shark","dino","penguin"];
   const NAMES = ["Egg","Hatchling","Kid","Scrapper","Champion","Hero","Mega","Ultra","Mythic","LEGENDARY"];
   const LEVELS = [1,3,6,10,15,21,28,36,45,55];
-  for (let i = 0; i < 10; i++) {
-    for (const [box, cls] of [["dark",""],["light","light"]]) {
-      const d = document.createElement("div");
-      d.className = "cell " + cls;
-      d.innerHTML = `<img src="assets/pets/dragon/stage${i}.svg?v=1"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">level ${LEVELS[i]}+</div>`;
-      document.getElementById(box).appendChild(d);
+  const all = document.getElementById("all"), smalls = document.getElementById("smalls");
+  for (const pet of PETS) {
+    all.insertAdjacentHTML("beforeend", `<h2>${pet[0].toUpperCase() + pet.slice(1)}</h2>`);
+    const g = document.createElement("div"); g.className = "grid";
+    for (let i = 0; i < 10; i++) {
+      const cls = i >= 5 ? "cell light" : "cell"; // show later stages on white too? alternate: even rows dark
+      g.insertAdjacentHTML("beforeend",
+        `<div class="cell"><img src="assets/pets/${pet}/stage${i}.svg?v=2"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">level ${LEVELS[i]}+</div></div>`);
     }
-    document.getElementById("mid").insertAdjacentHTML("beforeend", `<img class="md" src="assets/pets/dragon/stage${i}.svg?v=1">`);
-    document.getElementById("small").insertAdjacentHTML("beforeend", `<img class="sm" src="assets/pets/dragon/stage${i}.svg?v=1">`);
+    all.appendChild(g);
+    const g2 = document.createElement("div"); g2.className = "grid";
+    for (let i = 0; i < 10; i++) {
+      g2.insertAdjacentHTML("beforeend",
+        `<div class="cell light"><img src="assets/pets/${pet}/stage${i}.svg?v=2"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">on white</div></div>`);
+    }
+    const det = document.createElement("details");
+    det.innerHTML = "<summary style='cursor:pointer;color:#aab0e0;font-weight:800;margin:.4rem 0'>show on white (problem card)</summary>";
+    det.appendChild(g2);
+    all.appendChild(det);
+    const row = document.createElement("div"); row.className = "row";
+    row.innerHTML = `<b style="width:90px;font-family:Fredoka">${pet}</b>` +
+      Array.from({length: 10}, (_, i) => `<img class="sm" src="assets/pets/${pet}/stage${i}.svg?v=2">`).join("");
+    smalls.appendChild(row);
   }
 </script>
 </body>
