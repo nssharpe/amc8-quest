@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>Dragon — stage 5: Hero</title>
+  <defs>
+  <radialGradient id="auraGrad" cx="50%" cy="55%" r="50%">
+    <stop offset="0%" stop-color="#ffd21f" stop-opacity="0.55"/>
+    <stop offset="70%" stop-color="#ff9f2e" stop-opacity="0.28"/>
+    <stop offset="100%" stop-color="#ff9f2e" stop-opacity="0"/>
+  </radialGradient>
+  </defs>
+  <g id="dragon" transform="translate(100,196) scale(0.84) translate(-100,-196)">
+    <g id="wingL" transform="translate(100,0) scale(-1,1) translate(-100,0)"><path d="M136,112 C168,86 186,92 184,104 C176,100 168,102 164,108 C174,108 178,116 174,124 C166,120 160,122 156,128 C162,132 162,140 156,144 C144,146 134,132 134,120 Z" fill="#349e5c"/><path d="M140,116 C160,102 174,104 172,112 C164,112 158,116 154,122 C158,126 157,133 152,136 C144,136 138,128 138,120 Z" fill="#8fe0c8"/></g>
+    <g id="wingR" transform="translate(100,0) scale(1,1) translate(-100,0)"><path d="M136,112 C168,86 186,92 184,104 C176,100 168,102 164,108 C174,108 178,116 174,124 C166,120 160,122 156,128 C162,132 162,140 156,144 C144,146 134,132 134,120 Z" fill="#349e5c"/><path d="M140,116 C160,102 174,104 172,112 C164,112 158,116 154,122 C158,126 157,133 152,136 C144,136 138,128 138,120 Z" fill="#8fe0c8"/></g>
+    <path id="tail" d="M118,168 C150,172 168,160 172,136 C174,124 170,116 162,112 C166,124 160,140 146,148 C136,154 124,156 116,154 Z" fill="#56be75"/><path id="tailFin" d="M162,112 C158,100 162,90 172,84 C170,94 174,98 182,98 C174,104 170,110 170,118 Z" fill="#349e5c"/><g id="tailFlame" transform="translate(170,100) scale(0.7)"><path d="M0,14 C-10,4 -8,-10 0,-20 C8,-10 10,4 0,14 Z" fill="#ff9f2e"/><path d="M0,9 C-5,3 -4,-5 0,-11 C4,-5 5,3 0,9 Z" fill="#ffd21f"/></g>
+    <ellipse id="footL" cx="74" cy="186" rx="16" ry="11" fill="#2d8f53"/>
+    <ellipse id="footR" cx="126" cy="186" rx="16" ry="11" fill="#2d8f53"/>
+    <ellipse id="body" cx="100" cy="150" rx="46" ry="40" fill="#56be75"/>
+    <ellipse id="belly" cx="100" cy="158" rx="30" ry="28" fill="#f6ecc3"/>
+    <ellipse id="armL" cx="62" cy="146" rx="10" ry="15" transform="rotate(18 62 146)" fill="#2d8f53"/>
+    <ellipse id="armR" cx="138" cy="146" rx="10" ry="15" transform="rotate(-18 138 146)" fill="#2d8f53"/>
+    <g id="horns" transform="translate(100,60) scale(1.0) translate(-100,-60)"><path d="M66,58 C58,44 58,30 68,20 C74,32 76,44 74,56 Z" fill="#f2e3b8"/><path d="M134,58 C142,44 142,30 132,20 C126,32 124,44 126,56 Z" fill="#f2e3b8"/></g>
+    <circle id="head" cx="100" cy="92" r="52" fill="#56be75"/>
+    <ellipse id="muzzle" cx="100" cy="114" rx="27" ry="18" fill="#8bdb9d"/>
+    <ellipse id="nostrilL" cx="92" cy="109" rx="2.6" ry="3.4" fill="#26324e"/>
+    <ellipse id="nostrilR" cx="108" cy="109" rx="2.6" ry="3.4" fill="#26324e"/>
+    <path id="mouth" d="M88,122 Q100,130 112,122" fill="none" stroke="#26324e" stroke-width="3.5" stroke-linecap="round"/>
+    <path id="fang" d="M108,124 l3,7 4,-6 Z" fill="#ffffff"/>
+    <g id="eyeL"><ellipse cx="78" cy="84" rx="13" ry="15" fill="#ffffff"/><ellipse cx="80" cy="86" rx="6.5" ry="8.5" fill="#26324e"/><circle cx="82.5" cy="82" r="2.6" fill="#ffffff"/></g>
+    <g id="eyeR"><ellipse cx="122" cy="84" rx="13" ry="15" fill="#ffffff"/><ellipse cx="124" cy="86" rx="6.5" ry="8.5" fill="#26324e"/><circle cx="126.5" cy="82" r="2.6" fill="#ffffff"/></g>
+    <ellipse id="cheekL" cx="62" cy="104" rx="8" ry="5" fill="#ff9c9c" opacity="0.55"/>
+    <ellipse id="cheekR" cx="138" cy="104" rx="8" ry="5" fill="#ff9c9c" opacity="0.55"/>
+    <g id="spikes"><path d="M67,46 C72,28 80,28 85,46 L82,54 L70,54 Z" fill="#2d8f53"/><path d="M91,46 C96,24 104,24 109,46 L106,54 L94,54 Z" fill="#2d8f53"/><path d="M115,46 C120,28 128,28 133,46 L130,54 L118,54 Z" fill="#2d8f53"/></g>
+  </g>
+</svg>

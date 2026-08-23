@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pet Art Preview — AMC 8 Quest</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600&family=Nunito:wght@700;800&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #131530; color: #eef0ff; font-family: "Nunito", sans-serif; padding: 1.5rem 1rem 4rem; }
+  h1 { font-family: "Fredoka", sans-serif; text-align: center; font-size: 1.8rem; }
+  p.sub { text-align: center; color: #aab0e0; font-weight: 700; margin: .4rem 0 1.5rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; max-width: 1000px; margin: 0 auto; }
+  .cell { background: #1f2148; border: 2px solid #3a3d75; border-radius: 18px; padding: .8rem; text-align: center; }
+  .cell img { width: 100%; max-width: 150px; }
+  .cell.light { background: #ffffff; border-color: #d5d5e0; }
+  .cell .n { font-family: "Fredoka", sans-serif; font-weight: 600; margin-top: .3rem; }
+  .cell.light .n { color: #26324e; }
+  .cell .lv { font-size: .75rem; color: #aab0e0; font-weight: 800; }
+  .cell.light .lv { color: #667; }
+  h2 { font-family: "Fredoka", sans-serif; text-align: center; margin: 2.2rem 0 1rem; font-size: 1.3rem; color: #ffd21f; }
+  .row { display: flex; justify-content: center; gap: .5rem; flex-wrap: wrap; max-width: 1000px; margin: 0 auto; }
+  .row img.sm { width: 44px; } .row img.md { width: 96px; }
+</style>
+</head>
+<body>
+  <h1>🐉 Dragon evolution — draft 1</h1>
+  <p class="sub">10 stages · proposed unlock levels 1, 3, 6, 10, 15, 21, 28, 36, 45, 55</p>
+  <div class="grid" id="dark"></div>
+  <h2>On white (problem-card background)</h2>
+  <div class="grid" id="light"></div>
+  <h2>Small sizes (dashboard bubble / player cards)</h2>
+  <div class="row" id="mid"></div>
+  <div class="row" id="small" style="margin-top:.6rem"></div>
+<script>
+  const NAMES = ["Egg","Hatchling","Kid","Scrapper","Champion","Hero","Mega","Ultra","Mythic","LEGENDARY"];
+  const LEVELS = [1,3,6,10,15,21,28,36,45,55];
+  for (let i = 0; i < 10; i++) {
+    for (const [box, cls] of [["dark",""],["light","light"]]) {
+      const d = document.createElement("div");
+      d.className = "cell " + cls;
+      d.innerHTML = `<img src="assets/pets/dragon/stage${i}.svg?v=1"><div class="n">${i}. ${NAMES[i]}</div><div class="lv">level ${LEVELS[i]}+</div>`;
+      document.getElementById(box).appendChild(d);
+    }
+    document.getElementById("mid").insertAdjacentHTML("beforeend", `<img class="md" src="assets/pets/dragon/stage${i}.svg?v=1">`);
+    document.getElementById("small").insertAdjacentHTML("beforeend", `<img class="sm" src="assets/pets/dragon/stage${i}.svg?v=1">`);
+  }
+</script>
+</body>
+</html>

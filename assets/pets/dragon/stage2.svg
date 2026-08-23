@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <title>Dragon — stage 2: Kid</title>
+  <defs>
+  <radialGradient id="auraGrad" cx="50%" cy="55%" r="50%">
+    <stop offset="0%" stop-color="#ffd21f" stop-opacity="0.55"/>
+    <stop offset="70%" stop-color="#ff9f2e" stop-opacity="0.28"/>
+    <stop offset="100%" stop-color="#ff9f2e" stop-opacity="0"/>
+  </radialGradient>
+  </defs>
+  <g id="dragon" transform="translate(100,196) scale(0.62) translate(-100,-196)">
+    <path id="tail" d="M118,168 C150,172 168,160 172,136 C174,124 170,116 162,112 C166,124 160,140 146,148 C136,154 124,156 116,154 Z" fill="#6cd486"/>
+    <ellipse id="footL" cx="74" cy="186" rx="16" ry="11" fill="#349e5c"/>
+    <ellipse id="footR" cx="126" cy="186" rx="16" ry="11" fill="#349e5c"/>
+    <ellipse id="body" cx="100" cy="150" rx="46" ry="40" fill="#6cd486"/>
+    <ellipse id="belly" cx="100" cy="158" rx="30" ry="28" fill="#f6ecc3"/>
+    <ellipse id="armL" cx="62" cy="146" rx="10" ry="15" transform="rotate(18 62 146)" fill="#349e5c"/>
+    <ellipse id="armR" cx="138" cy="146" rx="10" ry="15" transform="rotate(-18 138 146)" fill="#349e5c"/>
+    <g id="horns" transform="translate(100,60) scale(0.6) translate(-100,-60)"><path d="M66,58 C58,44 58,30 68,20 C74,32 76,44 74,56 Z" fill="#f2e3b8"/><path d="M134,58 C142,44 142,30 132,20 C126,32 124,44 126,56 Z" fill="#f2e3b8"/></g>
+    <circle id="head" cx="100" cy="92" r="52" fill="#6cd486"/>
+    <ellipse id="muzzle" cx="100" cy="114" rx="27" ry="18" fill="#98e4a8"/>
+    <ellipse id="nostrilL" cx="92" cy="109" rx="2.6" ry="3.4" fill="#26324e"/>
+    <ellipse id="nostrilR" cx="108" cy="109" rx="2.6" ry="3.4" fill="#26324e"/>
+    <path id="mouth" d="M88,122 Q100,130 112,122" fill="none" stroke="#26324e" stroke-width="3.5" stroke-linecap="round"/>
+    <g id="eyeL"><ellipse cx="78" cy="84" rx="13" ry="15" fill="#ffffff"/><ellipse cx="80" cy="86" rx="6.5" ry="8.5" fill="#26324e"/><circle cx="82.5" cy="82" r="2.6" fill="#ffffff"/></g>
+    <g id="eyeR"><ellipse cx="122" cy="84" rx="13" ry="15" fill="#ffffff"/><ellipse cx="124" cy="86" rx="6.5" ry="8.5" fill="#26324e"/><circle cx="126.5" cy="82" r="2.6" fill="#ffffff"/></g>
+    <ellipse id="cheekL" cx="62" cy="104" rx="8" ry="5" fill="#ff9c9c" opacity="0.55"/>
+    <ellipse id="cheekR" cx="138" cy="104" rx="8" ry="5" fill="#ff9c9c" opacity="0.55"/>
+  </g>
+</svg>
