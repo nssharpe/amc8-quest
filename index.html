@@ -122,7 +122,7 @@
     box-shadow: 0 5px 0 rgba(0,0,0,0.35);
   }
   .kid-card:hover { transform: translateY(-4px) rotate(-1deg); box-shadow: 0 9px 0 rgba(0,0,0,0.35); }
-  .kid-card .pet { font-size: 2.3rem; line-height: 1; }
+  .kid-card .pet { height: 54px; display: flex; align-items: center; justify-content: center; }
   .kid-card .kname { font-family: "Fredoka", sans-serif; font-size: 1.35rem; font-weight: 600; margin-top: .3rem; color: var(--kc, var(--sky)); line-height: 1.15; }
   .kid-card .klvl { color: var(--text-dim); font-weight: 700; font-size: .8rem; margin-top: .15rem; }
   .parent-row { margin-top: 2.2rem; }
@@ -296,7 +296,7 @@
     max-height: 92vh; overflow-y: auto;
   }
   @keyframes pop { from { transform: scale(.7); opacity: 0; } to { transform: none; opacity: 1; } }
-  .modal .bigemoji { font-size: 4rem; line-height: 1.1; }
+  .modal .bigemoji { font-size: 4rem; line-height: 1.1; min-height: 1.1em; display: flex; align-items: center; justify-content: center; }
   .modal h2 { font-size: 2rem; font-weight: 600; margin-top: .4rem; }
   .modal h2.good { color: var(--mint); }
   .modal h2.bad { color: var(--coral); }
@@ -322,7 +322,7 @@
   }
   .petopt:hover { transform: translateY(-3px); border-color: var(--sky); }
   .petopt.sel { border-color: var(--gold); background: #37310f; }
-  .petopt .pe { font-size: 2.4rem; }
+  .petopt .pe { height: 58px; display: flex; align-items: center; justify-content: center; }
   .petopt .pl { font-family: "Fredoka", sans-serif; font-weight: 600; margin-top: .2rem; }
   .petopt .pd { font-size: .72rem; color: var(--text-dim); font-weight: 700; }
 
@@ -707,17 +707,18 @@ const SPEED_BONUS = 15, XP_TRY = 5;
 const xpFor = r => (r.ok ? 20 + 4 * r.n + (r.t < speedParSec(r.n) ? SPEED_BONUS : 0) : XP_TRY);
 
 const PETS = {
-  dragon:  { label: "Dragon",  desc: "fire & fury",    stages: ["🥚", "🐣", "🦎", "🐲", "🐉", "🐉✨"] },
-  unicorn: { label: "Unicorn", desc: "sparkle power",  stages: ["🥚", "🐣", "🐴", "🦄", "🦄✨", "🌈🦄"] },
-  robot:   { label: "Robot",   desc: "beep boop",      stages: ["📦", "🔩", "🤖", "🤖⚡", "🤖🚀", "🤖🌟"] },
-  cat:     { label: "Cat",     desc: "sneaky & smart", stages: ["🥚", "🐣", "🐱", "😼", "🐯", "🦁👑"] },
-  fox:     { label: "Fox",     desc: "sly & quick",    stages: ["🥚", "🐣", "🦊", "🦊✨", "🔥🦊", "🦊👑"] },
-  shark:   { label: "Shark",   desc: "ocean boss",     stages: ["🫧", "🐟", "🐠", "🦈", "🦈⚡", "🦈👑"] },
-  dino:    { label: "Dino",    desc: "prehistoric power", stages: ["🥚", "🐣", "🦎", "🦕", "🦖", "🦖🌋"] },
-  penguin: { label: "Penguin", desc: "cool under pressure", stages: ["🥚", "🐣", "🐧", "🐧❄️", "🐧🧊", "🐧👑"] },
+  dragon:  { label: "Dragon",  desc: "fire & fury" },
+  unicorn: { label: "Unicorn", desc: "sparkle power" },
+  robot:   { label: "Robot",   desc: "beep boop" },
+  cat:     { label: "Cat",     desc: "sneaky & smart" },
+  fox:     { label: "Fox",     desc: "sly & quick" },
+  shark:   { label: "Shark",   desc: "ocean boss" },
+  dino:    { label: "Dino",    desc: "prehistoric power" },
+  penguin: { label: "Penguin", desc: "cool under pressure" },
 };
-const STAGE_LEVELS = [1, 3, 6, 10, 15, 21];
-const STAGE_NAMES = ["Egg", "Hatchling", "Youngster", "Champion", "Mega", "LEGENDARY"];
+const petImgSrc = (pet, stage) => "assets/pets/" + pet + "/stage" + stage + ".svg";
+const STAGE_LEVELS = [1, 3, 6, 10, 15, 21, 28, 36, 45, 55];
+const STAGE_NAMES = ["Egg", "Hatchling", "Kid", "Scrapper", "Champion", "Hero", "Mega", "Ultra", "Mythic", "LEGENDARY"];
 function petStage(lvl) { let s = 0; for (let i = 0; i < STAGE_LEVELS.length; i++) if (lvl >= STAGE_LEVELS[i]) s = i; return s; }
 
 const BADGES = [
@@ -951,7 +952,9 @@ function fmtTime(sec) {
   sec = Math.round(sec);
   return Math.floor(sec / 60) + ":" + String(sec % 60).padStart(2, "0");
 }
-const petEmoji = p => (p.pet ? PETS[p.pet].stages[petStage(levelFromXp(p.xp).lvl)] : "🥚");
+const petArt = (p, px) => (p.pet
+  ? `<img class="petimg" src="${petImgSrc(p.pet, petStage(levelFromXp(p.xp).lvl))}" width="${px}" height="${px}" alt="${PETS[p.pet].label}">`
+  : `<span style="font-size:${Math.round(px * 0.78)}px;line-height:1">🥚</span>`);
 
 /* active (in-progress) problem is per-device on purpose */
 const activeKey = kid => "amc8q.active." + kid;
@@ -1052,7 +1055,7 @@ function renderSelect() {
     card.className = "kid-card";
     card.style.setProperty("--kc", KIDS[id].color);
     card.innerHTML = `
-      <div class="pet">${petEmoji(p)}</div>
+      <div class="pet">${petArt(p, 52)}</div>
       <div class="kname">${KIDS[id].name}</div>
       <div class="klvl">Level ${lvl} · ${solvedCount(p)} solved</div>`;
     card.addEventListener("click", () => { sndClick(); enterKid(id); });
@@ -1082,7 +1085,7 @@ function showPetPicker() {
     const opt = document.createElement("button");
     opt.type = "button";
     opt.className = "petopt";
-    opt.innerHTML = `<div class="pe">${PETS[key].stages[2]}</div><div class="pl">${PETS[key].label}</div><div class="pd">${PETS[key].desc}</div>`;
+    opt.innerHTML = `<div class="pe"><img src="${petImgSrc(key, 2)}" width="56" height="56" alt=""></div><div class="pl">${PETS[key].label}</div><div class="pd">${PETS[key].desc}</div>`;
     opt.addEventListener("click", () => {
       sndClick();
       pendingPetPick = key;
@@ -1109,7 +1112,7 @@ function renderDash() {
   const kid = KIDS[currentKid];
   const { lvl, into, need } = levelFromXp(p.xp);
   $("d-name").textContent = kid.name;
-  $("d-pet").textContent = petEmoji(p);
+  $("d-pet").innerHTML = petArt(p, 74);
   $("d-level").textContent = lvl;
   $("d-title").textContent = LEVEL_TITLES[Math.min(lvl - 1, LEVEL_TITLES.length - 1)];
   $("d-petstage").textContent = p.pet ? PETS[p.pet].label + " · stage: " + STAGE_NAMES[petStage(lvl)] : "";
@@ -1531,7 +1534,7 @@ $("r-home").addEventListener("click", () => {
     pendingLevelUp = null;
     $("l-level").textContent = newLvl;
     $("l-title").textContent = LEVEL_TITLES[Math.min(newLvl - 1, LEVEL_TITLES.length - 1)];
-    $("l-pet").textContent = petEmoji(p);
+    $("l-pet").innerHTML = petArt(p, 96);
     const evolved = p.pet && petStage(newLvl) > petStage(oldLvl);
     $("l-evolve").textContent = evolved
       ? "WHOA — your " + PETS[p.pet].label.toLowerCase() + " evolved to " + STAGE_NAMES[petStage(newLvl)] + "!"

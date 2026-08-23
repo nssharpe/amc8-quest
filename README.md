@@ -43,7 +43,8 @@ timer. Solving earns XP, levels, an evolving pet, and trophies.
   Quitting/giving up counts as a wrong answer (5 consolation XP).
 - XP: `20 + 4×number` for a correct answer, `+15` speed bonus under par
   (`30 + 6×number` seconds), `5` for a wrong answer or give-up.
-- Pets evolve at levels 3, 6, 10, 15, and 21.
+- Pets evolve at levels 3, 6, 10, 15, 21, 28, 36, 45, and 55 (original SVG
+  art in `assets/pets/`, review page at `pets-preview.html`).
 
 ## Attribution
 
