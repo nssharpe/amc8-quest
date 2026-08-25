@@ -355,6 +355,17 @@
   /* problem-image fallbacks (inside the white paper card) */
   .paper .tex-fallback { font-family: ui-monospace, Consolas, monospace; background: #fff3c4; color: #4a3b00; padding: 0 .3em; border-radius: 4px; }
   .paper .paper-note { color: #666; font-size: .8rem; font-weight: 700; margin-top: .8rem; }
+  /* shared background passage some contests print once above a run of problems */
+  .paper .passage {
+    background: #eef3ff; color: #1c2b4a; border: 2px solid #b9c8ee;
+    border-left: 6px solid #3a56a0; border-radius: 12px;
+    padding: .7rem .95rem; margin-bottom: 1rem;
+  }
+  .paper .passage .passage-label {
+    display: block; color: #3a56a0; font-family: "Fredoka", sans-serif;
+    font-weight: 600; font-size: .85rem; letter-spacing: .02em; margin-bottom: .3rem;
+  }
+  .paper .passage p { margin: 0; }
   .paper .img-missing { display: inline-block; color: #a33; font-weight: 800; font-size: .9rem; }
   .paper-banner {
     background: #fff3c4; color: #4a3b00; border: 2px solid #e0c252; border-radius: 12px;
@@ -1377,6 +1388,34 @@ function applyCorrections(frag, y, n) {
   return applied;
 }
 
+// Some contests print one background passage above a run of problems. The wiki splits
+// those problems onto separate pages and drops the passage, leaving each one unsolvable
+// on its own. Re-attach it here; keyed "year-number", all sharing a single source string.
+const NISOS_PASSAGE =
+  "In the very center of the Irenic Sea lie the beautiful Nisos Isles. In 1998 the number " +
+  "of people on these islands is only 200, but the population triples every 25 years. Queen " +
+  "Irene has decreed that there must be at least 1.5 square miles for every person living in " +
+  "the Isles. The total area of the Nisos Isles is 24,900 square miles.";
+const PASSAGES = {
+  "1998-15": { label: "📜 Read this first — shared by 1998 #15, #16 and #17", text: NISOS_PASSAGE, match: /Nisos Isles/ },
+  "1998-16": { label: "📜 Read this first — shared by 1998 #15, #16 and #17", text: NISOS_PASSAGE, match: /Nisos Isles/ },
+  "1998-17": { label: "📜 Read this first — shared by 1998 #15, #16 and #17", text: NISOS_PASSAGE, match: /Nisos Isles/ },
+};
+function applyPassage(frag, y, n) {
+  const p = PASSAGES[y + "-" + n];
+  // skip if the wiki has since restored the passage upstream, so it never prints twice
+  if (!p || p.match.test(frag.textContent)) return;
+  const box = document.createElement("div");
+  box.className = "passage";
+  const lab = document.createElement("span");
+  lab.className = "passage-label";
+  lab.textContent = p.label;
+  const para = document.createElement("p");
+  para.textContent = p.text;
+  box.append(lab, para);
+  frag.prepend(box);
+}
+
 // rough LaTeX -> plain text for the "image didn't load" fallback
 function texToText(tex) {
   return tex
@@ -1438,6 +1477,7 @@ async function loadProblemBody(y, n, attempt = 0) {
     }
     sanitizeProblemNodes(frag);
     if (!frag.textContent.trim() && !frag.querySelector("img")) throw new Error("empty problem");
+    applyPassage(frag, y, n); // after the empty-check, so it can't mask a failed fetch
     if (applyCorrections(frag, y, n)) {
       const note = document.createElement("div");
       note.className = "paper-note";
